@@ -1,0 +1,7 @@
+import { z } from 'zod';
+
+export const dateSchema = z.iso.date('Selecciona una fecha válida.').refine((value) => {
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}, 'La fecha no existe en el calendario.');
+export const entityIdSchema = z.string().min(1);
