@@ -3,5 +3,6 @@
   <component name="DataSourcePerFileMappings">
     <file url="file://$PROJECT_DIR$/proposal-service/src/main/resources/db/migration/V2__.sql" value="d69759ec-ab06-4a7d-84b9-f07dd1d4a477" />
     <file url="file://$PROJECT_DIR$/proposal-service/src/main/resources/db/migration/V3__complete_proposal_models.sql" value="d69759ec-ab06-4a7d-84b9-f07dd1d4a477" />
+    <file url="file://$PROJECT_DIR$/proposal-service/src/main/resources/db/migration/V4__proposal_api_records.sql" value="d69759ec-ab06-4a7d-84b9-f07dd1d4a477" />
   </component>
 </project>

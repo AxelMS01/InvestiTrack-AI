@@ -1,0 +1,228 @@
+# Open this file in IntelliJ's HTTP Client. Run requests individually from top to bottom.
+# Replace the token placeholders with access tokens from your configured OIDC provider.
+# Do not commit real tokens. You can instead put these variables in http-client.private.env.json.
+# Tokens need issuer/audience validation, signed user_id UUID, and roles as described in ../README.md.
+@baseUrl = http://localhost:8081
+@researcherToken = REPLACE_WITH_RESEARCHER_ACCESS_TOKEN
+@coordinatorToken = REPLACE_WITH_COORDINATOR_ACCESS_TOKEN
+@evaluatorToken = REPLACE_WITH_EVALUATOR_ACCESS_TOKEN
+# Must equal user_id in evaluatorToken and differ from the proposal owner's user_id.
+@evaluatorUserId = 22222222-2222-4222-8222-222222222222
+
+### 1. Liveness: no authentication needed. Expected: 200, status UP.
+GET {{baseUrl}}/actuator/health/liveness
+Accept: application/json
+
+### 2. Research areas. If empty, run seed-test-catalogs.sql against your development DB.
+GET {{baseUrl}}/api/v1/reference/research-areas
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Research areas available", function () {
+    client.assert(response.status === 200, "Expected 200; verify your access token");
+    client.assert(response.body.items.length > 0, "Seed an active research area first");
+});
+if (response.status === 200 && response.body.items.length > 0) {
+    client.global.set("researchAreaCode", response.body.items[0].code);
+}
+%}
+
+### 3. Evaluation criteria. Every active criterion must be scored before evaluation submission.
+GET {{baseUrl}}/api/v1/evaluation-criteria?limit=100
+Authorization: Bearer {{evaluatorToken}}
+
+> {%
+client.test("Evaluation criteria available", function () {
+    client.assert(response.status === 200, "Expected 200; token needs EVALUATOR or COORDINATOR role");
+    client.assert(response.body.items.length > 0, "Seed an active evaluation criterion first");
+    client.assert(!response.body.page.hasMore, "Fetch remaining criteria and include them in the evaluation");
+});
+if (response.status === 200) {
+    client.global.set("evaluationCriteria", JSON.stringify(response.body.items.map(function (criterion) {
+        return {criterionCode: criterion.code, score: criterion.minimumScore, comment: "HTTP Client test"};
+    })));
+}
+%}
+
+### 4. Create a draft. Expected: 201. Run again to create a new proposal.
+POST {{baseUrl}}/api/v1/proposals
+Authorization: Bearer {{researcherToken}}
+Content-Type: application/json
+
+{
+  "title": "Water quality monitoring with low-cost sensors",
+  "abstract": "Evaluate low-cost sensors for water quality monitoring.",
+  "researchProblem": "Conventional monitoring equipment is expensive.",
+  "objectives": [
+    {"type": "GENERAL", "description": "Evaluate sensor accuracy."},
+    {"type": "SPECIFIC", "description": "Compare results with reference equipment."}
+  ],
+  "methodology": "Collect paired sensor and reference measurements.",
+  "researchAreaCode": "{{researchAreaCode}}",
+  "expectedResults": "A validated sensor monitoring protocol.",
+  "estimatedDurationMonths": 12,
+  "supportingDocumentIds": []
+}
+
+> {%
+client.test("Draft created", function () { client.assert(response.status === 201, "Expected 201"); });
+if (response.status === 201) {
+    client.global.set("proposalId", response.body.id);
+    client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+}
+%}
+
+### 5. List the current user's proposals. Expected: 200.
+GET {{baseUrl}}/api/v1/proposals?limit=25&sort=-updatedAt&status=DRAFT
+Authorization: Bearer {{researcherToken}}
+
+### 6. Get proposal and refresh ETag. Rerun this whenever the proposal version changes.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{researcherToken}}
+
+> {%
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 7. Edit the draft. Expected: 200.
+PATCH {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{researcherToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{"title": "Water quality monitoring — pilot study"}
+
+> {%
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 8. Submit. Expected: 200 with SUBMITTED status.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/transitions
+Authorization: Bearer {{researcherToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{"targetStatus": "SUBMITTED"}
+
+> {%
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 9. Assign an evaluator as coordinator. Expected: 201.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluator-assignments
+Authorization: Bearer {{coordinatorToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{
+  "evaluatorId": "{{evaluatorUserId}}",
+  "instructions": "Evaluate scientific merit and feasibility."
+}
+
+> {%
+if (response.status === 201) {
+    client.global.set("assignmentId", response.body.id);
+    client.global.set("assignmentEtag", response.headers.valueOf("ETag"));
+}
+%}
+
+### 10. Assignment creation changes the proposal version: refresh it before transitioning.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{coordinatorToken}}
+
+> {%
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 11. Start review as coordinator. Expected: 200 with UNDER_REVIEW status.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/transitions
+Authorization: Bearer {{coordinatorToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{"targetStatus": "UNDER_REVIEW"}
+
+> {%
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 12. Create evaluation using the assigned evaluator's token. Expected: 201.
+# This example uses minimum valid scores. Adjust scores before submission as needed.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations
+Authorization: Bearer {{evaluatorToken}}
+Content-Type: application/json
+
+{
+  "criteria": {{evaluationCriteria}},
+  "observations": "Pilot evaluation created through IntelliJ HTTP Client.",
+  "recommendations": "Document the calibration procedure.",
+  "decision": "APPROVE"
+}
+
+> {%
+if (response.status === 201) {
+    client.global.set("evaluationId", response.body.id);
+    client.global.set("evaluationEtag", response.headers.valueOf("ETag"));
+}
+%}
+
+### 13. Submit and lock evaluation. Expected: 200 with SUBMITTED status.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations/{{evaluationId}}/submission
+Authorization: Bearer {{evaluatorToken}}
+If-Match: {{evaluationEtag}}
+
+> {%
+if (response.status === 200) client.global.set("evaluationEtag", response.headers.valueOf("ETag"));
+%}
+
+### 14. Release evaluation to researchers as coordinator. Expected: 200.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations/{{evaluationId}}/release
+Authorization: Bearer {{coordinatorToken}}
+If-Match: {{evaluationEtag}}
+
+> {%
+if (response.status === 200) client.global.set("evaluationEtag", response.headers.valueOf("ETag"));
+%}
+
+### 15. Evaluation submission changes the proposal version: refresh it.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{coordinatorToken}}
+
+> {%
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 16. Approve as coordinator. Expected: 200 with APPROVED status.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/transitions
+Authorization: Bearer {{coordinatorToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{"targetStatus": "APPROVED", "reason": "Evaluation policy satisfied."}
+
+> {%
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 17. View released evaluations as the researcher. Expected: 200.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations
+Authorization: Bearer {{researcherToken}}
+
+### 18. View proposal history. Expected: 200.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}/history
+Authorization: Bearer {{researcherToken}}
+
+### Negative check: missing token. Expected: 401.
+GET {{baseUrl}}/api/v1/proposals
+
+### Negative check: invalid page size. Expected: 400.
+GET {{baseUrl}}/api/v1/proposals?limit=101
+Authorization: Bearer {{researcherToken}}
+
+### Negative check: missing If-Match. Expected: 428.
+# Coordinator is authorized to attempt a transition; the precondition check runs first.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/transitions
+Authorization: Bearer {{coordinatorToken}}
+Content-Type: application/json
+
+{"targetStatus": "REJECTED"}
