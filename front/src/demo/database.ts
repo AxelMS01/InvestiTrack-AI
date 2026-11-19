@@ -9,6 +9,16 @@ import { readDemoProjects } from '../features/projects/demo';
 import { addDays } from '../lib/format';
 import { ApiError } from '../api/http-client';
 
+import { academicUnitSchema, studentRequestSchema } from '../types/academic';
+import {
+  evidenceSchema,
+  evidenceGradeSchema,
+  evidenceReviewSchema,
+  evidenceVersionSchema,
+  rubricSchema,
+} from '../types/evidence';
+import { defaultUnits, demoRubric, seedEvidence } from './academic-seed';
+
 export const demoUsers = z.array(userSchema).parse([
   {
     id: 'u1',
@@ -22,6 +32,8 @@ export const demoUsers = z.array(userSchema).parse([
     name: 'Carlos Mendoza',
     email: 'carlos@institucion.edu.mx',
     roles: ['COORDINATOR'],
+    academicUnitIds: ['environment', 'social'],
+    coordinationUnitIds: ['environment', 'social'],
     departmentId: 'environment',
     status: 'ACTIVE',
   },
@@ -46,6 +58,40 @@ export const demoUsers = z.array(userSchema).parse([
     name: 'Sofía López',
     email: 'sofia@institucion.edu.mx',
     roles: ['STUDENT'],
+    departmentId: 'environment',
+    status: 'ACTIVE',
+  },
+  {
+    id: 'u6',
+    name: 'Mariana Vega',
+    email: 'mariana@institucion.edu.mx',
+    roles: ['COORDINATOR'],
+    departmentId: 'health',
+    academicUnitIds: ['health', 'engineering'],
+    coordinationUnitIds: ['health', 'engineering'],
+    status: 'ACTIVE',
+  },
+  {
+    id: 'u7',
+    name: 'Mateo Cruz',
+    email: 'mateo@institucion.edu.mx',
+    roles: ['STUDENT'],
+    departmentId: 'environment',
+    status: 'ACTIVE',
+  },
+  {
+    id: 'u8',
+    name: 'Lucía Ramos',
+    email: 'lucia@institucion.edu.mx',
+    roles: ['EVALUATOR'],
+    departmentId: 'social',
+    status: 'ACTIVE',
+  },
+  {
+    id: 'u9',
+    name: 'Raúl Neri',
+    email: 'raul@institucion.edu.mx',
+    roles: ['RESEARCHER'],
     departmentId: 'environment',
     status: 'ACTIVE',
   },
@@ -74,6 +120,13 @@ const databaseSchema = z.object({
   documents: z.array(documentSchema),
   audit: z.array(auditSchema),
   publications: z.array(publicationSchema),
+  academicUnits: z.array(academicUnitSchema).default(defaultUnits),
+  studentRequests: z.array(studentRequestSchema).default([]),
+  evidences: z.array(evidenceSchema).default([]),
+  evidenceVersions: z.array(evidenceVersionSchema).default([]),
+  evidenceReviews: z.array(evidenceReviewSchema).default([]),
+  evidenceGrades: z.array(evidenceGradeSchema).default([]),
+  rubrics: z.array(rubricSchema).default([demoRubric]),
 });
 export type DemoDatabase = z.infer<typeof databaseSchema>;
 
@@ -116,7 +169,7 @@ function proposalFrom(project: Project): RegisteredProposal {
       {
         status: 'approved',
         at,
-        actorId: 'u2',
+        actorId: project.supervisorIds?.[0] ?? 'u2',
         note: 'Aprobación registrada en el conjunto de demostración.',
       },
     ],
@@ -132,7 +185,24 @@ function initialDatabase(): DemoDatabase {
     return {
       ...project,
       proposalId: 'proposal-' + project.id,
-      supervisorIds: ['u2'],
+      academicUnitId: project.departmentId,
+      supervisorIds: [
+        project.departmentId === 'health' || project.departmentId === 'engineering' ? 'u6' : 'u2',
+      ],
+      evaluatorAssignments:
+        project.id === 'p1'
+          ? [
+              {
+                id: 'demo-project-evaluator',
+                projectId: 'p1',
+                evaluatorUserId: 'u4',
+                status: 'ACTIVE' as const,
+                assignedBy: 'u2',
+                assignedAt: '2026-03-01T12:00:00Z',
+                reason: 'Seguimiento de demostración.',
+              },
+            ]
+          : [],
       members: project.id === 'p1' ? [{ userId: 'u5', responsibility: 'student' as const }] : [],
     };
   });
@@ -223,6 +293,21 @@ function initialDatabase(): DemoDatabase {
         ]
       : [],
     documents: [],
+    studentRequests: seed
+      ? [
+          {
+            id: 'request-seed',
+            projectId: 'p1',
+            studentUserId: 'u7',
+            proposedBy: 'u3',
+            proposedAt: '2026-11-18T12:00:00Z',
+            rationale: 'Apoyará el registro de mediciones de campo.',
+            status: 'PENDING',
+            version: 1,
+          },
+        ]
+      : [],
+    ...(seed ? seedEvidence('2026-11-18T12:00:00Z') : {}),
     audit: [],
     publications: [],
   });
@@ -232,7 +317,27 @@ export function readDatabase(): DemoDatabase {
   const stored = localStorage.getItem(demoStorageKey);
   if (!stored) return initialDatabase();
   try {
-    return databaseSchema.parse(JSON.parse(stored) as unknown);
+    const data = databaseSchema.parse(JSON.parse(stored) as unknown);
+    for (const profile of demoUsers.filter((item) => ['u6', 'u7', 'u8', 'u9'].includes(item.id))) {
+      if (!data.users.some((item) => item.id === profile.id))
+        data.users.push(structuredClone(profile));
+    }
+    const originalCoordinator = data.users.find(
+      (item) => item.id === 'u2' && item.departmentId === 'environment',
+    );
+    if (originalCoordinator && !originalCoordinator.coordinationUnitIds) {
+      originalCoordinator.coordinationUnitIds = ['environment', 'social'];
+      originalCoordinator.academicUnitIds ??= ['environment', 'social'];
+    }
+    for (const project of data.projects) {
+      // Seed projects from the previous demo used one coordinator for all units.
+      if (!project.academicUnitId && /^p[1-5]$/.test(project.id)) {
+        project.academicUnitId = project.departmentId;
+        if (project.departmentId === 'engineering' || project.departmentId === 'health')
+          project.supervisorIds = ['u6'];
+      }
+    }
+    return data;
   } catch {
     throw new ApiError(
       409,

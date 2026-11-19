@@ -5,9 +5,9 @@ import { protectedRoutes } from './protected-routes';
 import { publicRoutes } from './public-routes';
 
 describe('Catálogo de arquitectura y rutas', () => {
-  it('incluye diez módulos sin identificadores ni rutas repetidos', () => {
-    expect(modules).toHaveLength(10);
-    expect(new Set(modules.map((module) => module.id)).size).toBe(10);
+  it('incluye doce módulos sin identificadores ni rutas repetidos', () => {
+    expect(modules).toHaveLength(12);
+    expect(new Set(modules.map((module) => module.id)).size).toBe(modules.length);
     const paths = modules.flatMap((module) => module.screens.map((screen) => screen.path));
     expect(new Set(paths).size).toBe(paths.length);
   });

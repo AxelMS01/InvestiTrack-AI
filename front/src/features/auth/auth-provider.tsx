@@ -6,6 +6,7 @@ import { invalidateWorkflowQueries } from '../../api/demo.queries';
 import { authApi } from '../../api/auth.api';
 import { sessionKey, useSession } from '../../api/auth.queries';
 import { AuthContext } from './auth-context';
+import { canCoordinateUnit } from './access-policy';
 import { userRoles, type Role } from '../../types/user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -23,19 +24,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', onStorage);
   }, [client]);
   const [selection, setSelection] = useState<{ id: string; role: Role }>();
+  const [unitSelection, setUnitSelection] = useState<{ userId: string; id: string }>();
   const user = session.data ?? null;
+  const unitId =
+    user && unitSelection?.userId === user.id && canCoordinateUnit(user, unitSelection.id)
+      ? unitSelection.id
+      : undefined;
   const active =
     user && selection?.id === user.id && userRoles(user).includes(selection.role)
       ? selection.role
       : user?.role;
   const switcher = useMutation({
-    mutationFn: async (role: Role) => {
+    mutationFn: async (profile: string) => {
       if (!config.demo) throw new Error('El simulador solo está disponible en demostración.');
       await client.cancelQueries();
-      const user = await authApi.demoLogin(role);
+      const user = await authApi.demoLogin(profile);
       client.removeQueries({ predicate: (query) => query.queryKey[0] !== 'session' });
       client.getMutationCache().clear();
       setSelection(undefined);
+      setUnitSelection(undefined);
       client.setQueryData(sessionKey, user);
       return user;
     },
@@ -45,6 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         workspace: active,
+        unitId,
+        switchUnit: (id) => {
+          if (user && id && canCoordinateUnit(user, id)) setUnitSelection({ userId: user.id, id });
+          else if (!id) setUnitSelection(undefined);
+        },
         switchWorkspace: (role) => {
           if (user && userRoles(user).includes(role)) setSelection({ id: user.id, role });
         },

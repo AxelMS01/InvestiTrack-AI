@@ -42,6 +42,8 @@ const projectWorkspace = () => import('../features/projects/project-workspace');
 const activities = () => import('../features/activities/activities-page');
 const documents = () => import('../features/documents/documents-page');
 const reports = () => import('../features/reports/reports-page');
+const coordination = () => import('../features/coordination/coordination-page');
+const evidences = () => import('../features/evidences/evidences-page');
 const accounts = () => import('../features/admin/account-pages');
 const profile = () => import('../features/dashboard/account-page');
 
@@ -68,6 +70,97 @@ export const protectedRoutes: RouteObject[] = [
         element: <DashboardLayout />,
         children: [
           { index: true, lazy: dashboard },
+          guarded(
+            'administracion/unidades',
+            'academic-unit:manage',
+            async () => ({
+              Component: (await import('../features/admin/academic-units-page')).AcademicUnitsPage,
+            }),
+            true,
+          ),
+          guarded(
+            'administracion/unidades/:id',
+            'academic-unit:manage',
+            async () => ({
+              Component: (await import('../features/admin/academic-units-page')).AcademicUnitsPage,
+            }),
+            true,
+          ),
+          guarded(
+            'coordinacion',
+            'academic-unit:coordinate',
+            async () => ({ Component: (await coordination()).CoordinationPage }),
+            true,
+          ),
+          guarded(
+            'coordinacion/evaluadores',
+            'project:assign-evaluator',
+            async () => ({ Component: (await coordination()).ProjectEvaluatorPage }),
+            true,
+          ),
+          guarded(
+            'proyectos/:id/evaluadores',
+            'project:assign-evaluator',
+            async () => ({ Component: (await coordination()).ProjectEvaluatorPage }),
+            true,
+          ),
+          guarded(
+            'proyectos/:id/proponer-estudiante',
+            'project:student-propose',
+            async () => ({ Component: (await coordination()).StudentProposalPage }),
+            true,
+          ),
+          guarded(
+            'solicitudes-estudiantes',
+            'project:student-requests',
+            async () => ({ Component: (await coordination()).StudentRequestsPage }),
+            true,
+          ),
+          guarded(
+            'solicitudes-estudiantes/:id',
+            'project:student-requests',
+            async () => ({ Component: (await coordination()).StudentRequestPage }),
+            true,
+          ),
+          guarded(
+            'proyectos/:id/evidencias',
+            'project:evidence-read',
+            async () => ({ Component: (await evidences()).ProjectEvidencesPage }),
+            true,
+          ),
+          guarded(
+            'evidencias',
+            'project:evidence-read',
+            async () => ({ Component: (await evidences()).EvidencesPage }),
+            true,
+          ),
+          guarded(
+            'evidencias/nueva',
+            'project:evidence-submit',
+            async () => ({
+              Component: (await import('../features/evidences/evidence-create-page'))
+                .EvidenceCreatePage,
+            }),
+            true,
+          ),
+          guarded(
+            'evidencias/:id',
+            'project:evidence-read',
+            async () => ({
+              Component: (await import('../features/evidences/evidence-detail-page'))
+                .EvidenceDetailPage,
+            }),
+            true,
+          ),
+          guarded(
+            'evidencias/:id/evaluar',
+            'project:evidence-grade',
+            async () => ({
+              Component: (await import('../features/evidences/evidence-evaluation-page'))
+                .EvidenceEvaluationPage,
+            }),
+            true,
+          ),
           workspace('panel/administrador', 'admin'),
           workspace('panel/coordinador', 'coordinator'),
           workspace('panel/investigador', 'researcher'),
@@ -131,7 +224,7 @@ export const protectedRoutes: RouteObject[] = [
           ),
           guarded(
             'evaluaciones/:id/decision',
-            'proposal:review',
+            'proposal:decide',
             async () => ({ Component: (await evaluations()).EvaluationDecisionPage }),
             true,
           ),
@@ -232,8 +325,7 @@ export const protectedRoutes: RouteObject[] = [
             'documentos/evidencias',
             'document:read',
             async () => {
-              const { DocumentsPage } = await documents();
-              return { Component: () => <DocumentsPage evidence /> };
+              return { Component: (await evidences()).EvidencesPage };
             },
             true,
           ),

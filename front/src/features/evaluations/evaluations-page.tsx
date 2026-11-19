@@ -29,7 +29,7 @@ export function EvaluationsPage() {
   const filter = params.get('estado') ?? '';
   const query = useDemoQuery(['evaluations'], demoEvaluations.list);
   const proposals = useProposals(
-    Boolean(user && workspace === 'coordinator' && can(user, 'proposal:review')),
+    Boolean(user && workspace === 'coordinator' && can(user, 'proposal:decide')),
   );
   const reviews = (query.data ?? []).filter(
     (item) =>

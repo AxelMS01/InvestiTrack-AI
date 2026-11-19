@@ -9,6 +9,8 @@ import { approveProposal, pdf, validProposal, validRubric } from '../test/workfl
 import { userSchema } from '../types/user';
 import { demoActivities } from './activities';
 import { demoAdministration } from './administration';
+import { demoCoordination } from './coordination';
+import { demoEvidences } from './evidences';
 import { demoDocuments } from './documents';
 import { demoEvaluations } from './evaluations';
 import { demoProjects } from './projects';
@@ -103,7 +105,19 @@ describe('Recorrido académico y autorización', () => {
       'Presenta el informe',
     );
     await authApi.demoLogin('researcher');
-    demoProjects.member({ id: project.id, userId: 'u5', responsibility: 'student' });
+    const request = demoCoordination.propose({
+      projectId: project.id,
+      studentUserId: 'u5',
+      rationale: 'Apoyo de campo.',
+    });
+    await authApi.demoLogin('coordinator');
+    demoCoordination.decide({
+      id: request.id,
+      version: request.version,
+      decision: 'APPROVED',
+      reason: '',
+    });
+    await authApi.demoLogin('researcher');
     const fields = {
       projectId: project.id,
       title: 'Resumen de observaciones',
@@ -127,26 +141,29 @@ describe('Recorrido académico y autorización', () => {
     });
     expect(() => demoAdministration.audit()).toThrow('permiso');
     expect(() => demoActivities.save({ values: { ...task } })).toThrow('permiso');
-    const context = { projectId: project.id, activityId: task.id, category: 'evidence' as const };
     await expect(
-      demoDocuments.upload(context, new File(['texto'], 'falso.pdf', { type: 'application/pdf' })),
+      demoEvidences.create({
+        activityId: task.id,
+        title: 'Informe de campo',
+        description: '',
+        files: [new File(['texto'], 'falso.pdf', { type: 'application/pdf' })],
+      }),
     ).rejects.toMatchObject({ status: 415 });
-    const evidence = await demoDocuments.upload(context, pdf('entrega.pdf'));
-    const version = await demoDocuments.upload(
-      { ...context, previousId: evidence.id },
-      pdf('entrega-corregida.pdf'),
-    );
-    expect(demoDocuments.versions(version.id).map((item) => item.id)).toEqual([
-      version.id,
-      evidence.id,
-    ]);
-    expect(await demoDocuments.download(version.id)).toMatchObject({
-      name: 'entrega-corregida.pdf',
+    const evidence = await demoEvidences.create({
+      activityId: task.id,
+      title: 'Informe de campo',
+      description: '',
+      files: [pdf('entrega.pdf')],
+    });
+    demoEvidences.submit(evidence);
+    const fileId = demoEvidences.detail(evidence.id).versions[0]!.documentIds[0]!;
+    expect(await demoDocuments.download(fileId)).toMatchObject({
+      name: 'entrega.pdf',
       blob: expect.any(File),
     });
     demoActivities.updateStatus({ id: task.id, status: 'completed' });
     await authApi.demoLogin('admin');
-    await expect(demoDocuments.download(version.id)).rejects.toMatchObject({ status: 403 });
+    await expect(demoDocuments.download(fileId)).rejects.toMatchObject({ status: 403 });
     await authApi.demoLogin('researcher');
     demoActivities.updateStatus({ id: milestone.id, status: 'completed' });
     const report = await demoDocuments.upload(

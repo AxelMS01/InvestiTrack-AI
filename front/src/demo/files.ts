@@ -1,3 +1,4 @@
+import { seededFile } from './academic-seed';
 const temporaryFiles = new Map<string, File>();
 
 function openFiles() {
@@ -32,6 +33,8 @@ export const demoFiles = {
     else await transact('readwrite', (store) => store.put(file, id));
   },
   async get(id: string): Promise<File | undefined> {
+    const seed = seededFile(id);
+    if (seed) return seed;
     if (typeof indexedDB === 'undefined') return temporaryFiles.get(id);
     const value: unknown = await transact('readonly', (store) => store.get(id));
     return value instanceof File ? value : undefined;

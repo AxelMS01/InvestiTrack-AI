@@ -14,9 +14,9 @@ import java.util.UUID;
     name = "proposal_objective",
     uniqueConstraints = {
         @UniqueConstraint(name = "uq_proposal_objective_proposal_id_display_order", columnNames = {"proposal_id", "display_order"})
-    }
+    },
+    check = @CheckConstraint(name = "ck_proposal_objective_values", constraint = "display_order >= 0")
 )
-@org.hibernate.annotations.Check(constraints = "(display_order >= 0)")
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

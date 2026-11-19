@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/http-client';
 import { useDemoQuery, useWorkflowMutation } from '../../api/demo.queries';
 import { useProjects } from '../../api/projects.queries';
 import { Button } from '../../components/button';
 import { Input } from '../../components/input';
 import { PageHeading } from '../../components/ui';
-import { demoActivities } from '../../demo/activities';
 import { demoProposals } from '../../demo/proposals';
 import { demoDocuments, fileAccept, fileType } from '../../demo/documents';
 import { downloadBlob } from '../../lib/download';
@@ -24,7 +23,7 @@ const labels: Record<Document['category'], string> = {
   other: 'Documento compartido',
 };
 
-export function DocumentsPage({ evidence = false }: { evidence?: boolean }) {
+export function DocumentsPage() {
   const [params] = useSearchParams();
   const [search, setSearch] = useState('');
   const { user } = useAuth();
@@ -32,21 +31,20 @@ export function DocumentsPage({ evidence = false }: { evidence?: boolean }) {
   const query = useDemoQuery(['documents'], demoDocuments.list);
   const entries = (query.data ?? []).filter(
     (item) =>
-      (!evidence || item.category === 'evidence') &&
       (!project || item.projectId === project) &&
       item.name.toLowerCase().includes(search.toLowerCase()),
   );
   const target = new URLSearchParams();
   if (project) target.set('proyecto', project);
-  if (evidence) target.set('categoria', 'evidence');
   return (
     <>
       <PageHeading
         eyebrow="Archivos de investigación"
-        title={evidence ? 'Evidencias' : 'Repositorio de documentos'}
+        title="Repositorio de documentos"
         description="Consulta los archivos compartidos en tu ámbito de trabajo."
         action={
           user &&
+          can(user, 'project:update') &&
           can(user, 'document:upload') && (
             <ActionLink to={`/documentos/subir?${target}`} primary>
               Subir archivo
@@ -65,13 +63,7 @@ export function DocumentsPage({ evidence = false }: { evidence?: boolean }) {
         </Field>
       </div>
       <WorkflowState query={query}>
-        <WorkflowList
-          empty={
-            evidence
-              ? 'Todavía no hay evidencias disponibles.'
-              : 'Todavía no hay documentos disponibles.'
-          }
-        >
+        <WorkflowList empty="Todavía no hay documentos disponibles.">
           {entries.map((item) => (
             <article
               className="flex flex-wrap items-center justify-between gap-3 p-5"
@@ -93,11 +85,22 @@ export function DocumentsPage({ evidence = false }: { evidence?: boolean }) {
 }
 
 export function DocumentUploadPage() {
-  const { user } = useAuth();
   const [params] = useSearchParams();
+  const activity = params.get('actividad');
+  if (activity || params.get('categoria') === 'evidence') {
+    const target = new URLSearchParams();
+    if (activity) target.set('actividad', activity);
+    if (params.has('proyecto')) target.set('proyecto', params.get('proyecto') ?? '');
+    return <Navigate to={`/evidencias/nueva?${target}`} replace />;
+  }
+  return <DocumentUploadForm key={params.toString()} params={params} />;
+}
+
+function DocumentUploadForm({ params }: { params: URLSearchParams }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const previousId = params.get('version') ?? '';
   const proposalId = params.get('propuesta') ?? '';
-  const activityId = params.get('actividad') ?? '';
   const previous = useDemoQuery(
     ['document', previousId],
     () => demoDocuments.detail(previousId),
@@ -108,243 +111,156 @@ export function DocumentUploadPage() {
     () => demoProposals.detail(proposalId),
     Boolean(proposalId),
   );
-  const activity = useDemoQuery(
-    ['activity', activityId],
-    () => demoActivities.detail(activityId),
-    Boolean(activityId),
+  const projects = useProjects(
+    !previousId && !proposalId && Boolean(user && can(user, 'project:update')),
   );
-  const projectList = useProjects(
-    Boolean(!previousId && !proposalId && !activityId && user && can(user, 'project:read')),
-  );
-  const activityList = useDemoQuery(
-    ['activities'],
-    demoActivities.list,
-    Boolean(!previousId && !proposalId && !activityId && user && can(user, 'activity:read')),
-  );
-  const contextQuery = previousId ? previous : proposalId ? proposal : activityId ? activity : null;
-  const back = previousId
-    ? `/documentos/${previousId}`
-    : proposalId
-      ? `/propuestas/${proposalId}`
-      : activityId
-        ? `/actividades/${activityId}`
-        : '/documentos';
-  return (
-    <>
-      <PageHeading
-        eyebrow="Archivos de investigación"
-        title={previousId ? 'Subir nueva versión' : 'Subir archivo'}
-        description="Selecciona el contexto de la entrega y un archivo de hasta 10 MB."
-        action={<ActionLink to={back}>Volver</ActionLink>}
-      />
-      {user &&
-        (contextQuery ? (
-          <WorkflowState query={contextQuery}>
-            <UploadForm
-              key={params.toString()}
-              defaults={{
-                projectId: previous.data?.projectId ?? activity.data?.project.id,
-                proposalId: previous.data?.proposalId ?? proposal.data?.id,
-                activityId: previous.data?.activityId ?? activity.data?.activity.id,
-                category: previous.data?.category ?? (proposalId ? 'protocol' : 'evidence'),
-                previousId: previous.data?.id,
-              }}
-              contextName={
-                previous.data?.name ??
-                proposal.data?.title ??
-                activity.data?.activity.title ??
-                'Propuesta sin título'
-              }
-            />
-          </WorkflowState>
-        ) : (
-          <WorkflowState query={projectList}>
-            <WorkflowState query={activityList}>
-              <UploadForm
-                key={params.toString()}
-                projects={(projectList.data ?? []).filter((item) => canManageProject(user, item))}
-                activities={(activityList.data ?? []).filter(
-                  (item) =>
-                    item.status !== 'cancelled' &&
-                    projectList.data?.some(
-                      (project) =>
-                        project.id === item.projectId &&
-                        project.status !== 'completed' &&
-                        (item.assigneeId === user.id || canManageProject(user, project)),
-                    ),
-                )}
-                defaults={{
-                  projectId: params.get('proyecto') ?? undefined,
-                  category:
-                    params.get('categoria') === 'report'
-                      ? 'report'
-                      : params.get('categoria') === 'evidence'
-                        ? 'evidence'
-                        : 'other',
-                }}
-              />
-            </WorkflowState>
-          </WorkflowState>
-        ))}
-    </>
-  );
-}
-
-type UploadContext = Parameters<typeof demoDocuments.upload>[0];
-function UploadForm({
-  defaults,
-  contextName,
-  projects = [],
-  activities = [],
-}: {
-  defaults: UploadContext;
-  contextName?: string;
-  projects?: { id: string; title: string }[];
-  activities?: { id: string; title: string; projectId: string }[];
-}) {
-  const navigate = useNavigate();
-  const [category, setCategory] = useState(
-    !contextName && !projects.length && activities.length ? 'evidence' : defaults.category,
+  const [category, setCategory] = useState<Document['category']>(
+    params.get('categoria') === 'report' ? 'report' : 'other',
   );
   const [file, setFile] = useState<File>();
   const [error, setError] = useState<Error>();
   const [stage, setStage] = useState('');
   const mutation = useWorkflowMutation(
-    ({ context, file }: { context: UploadContext; file: File }) =>
+    ({ context, file }: { context: Parameters<typeof demoDocuments.upload>[0]; file: File }) =>
       demoDocuments.upload(context, file, () => setStage('Procesando y verificando archivo…')),
   );
+  const actualCategory = previous.data?.category ?? (proposalId ? 'protocol' : category);
+  const context = previousId ? previous : proposalId ? proposal : projects;
+  const eligible = (projects.data ?? []).filter((item) => user && canManageProject(user, item));
+  const back = previousId
+    ? `/documentos/${previousId}`
+    : proposalId
+      ? `/propuestas/${proposalId}`
+      : '/documentos';
+  const allowed = Boolean(user && (previousId || proposalId || can(user, 'project:update')));
   return (
-    <form
-      className="panel max-w-3xl space-y-4 p-6"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        if (!file) return;
-        const data = new FormData(event.currentTarget);
-        const assignee = activities.find((item) => item.id === data.get('activity'));
-        const projectId = String(data.get('project') ?? '');
-        const context: UploadContext = contextName
-          ? defaults
-          : {
-              category,
-              projectId: assignee?.projectId ?? (projectId || undefined),
-              activityId: assignee?.id,
-            };
-        setError(undefined);
-        setStage('Subiendo…');
-        try {
-          const result = await mutation.mutateAsync({ context, file });
-          setStage('Disponible');
-          void navigate(`/documentos/${result.id}`, { state: { uploaded: true } });
-        } catch (cause) {
-          setStage(
-            cause instanceof ApiError && [413, 415, 422].includes(cause.status)
-              ? 'Rechazado'
-              : 'Error de carga',
-          );
-        }
-      }}
-    >
-      {contextName ? (
-        <p className="text-sm">
-          {contextName} · {labels[category]}
-        </p>
+    <>
+      <PageHeading
+        eyebrow="Archivos de investigación"
+        title={previousId ? 'Subir nueva versión' : 'Subir archivo'}
+        description="Selecciona un archivo de hasta 10 MB."
+        action={<ActionLink to={back}>Volver</ActionLink>}
+      />
+      {!allowed ? (
+        <WorkflowList empty="Entrega archivos académicos desde una actividad asignada.">
+          {[]}
+        </WorkflowList>
       ) : (
-        <>
-          <Field label="Tipo de archivo">
-            <select
-              className="input"
-              value={category}
-              onChange={(event) => {
-                const next = event.target.value;
-                if (next === 'report' || next === 'evidence' || next === 'other') {
-                  setCategory(next);
-                  setFile(undefined);
-                  setStage('');
-                  setError(undefined);
-                  mutation.reset();
+        <WorkflowState query={context}>
+          {actualCategory === 'evidence' ? (
+            <WorkflowList empty="Gestiona versiones desde la evidencia académica.">
+              {[]}
+            </WorkflowList>
+          ) : (
+            <form
+              className="panel max-w-3xl space-y-4 p-6"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                if (!file) return;
+                const data = new FormData(event.currentTarget);
+                setStage('Subiendo…');
+                try {
+                  const result = await mutation.mutateAsync({
+                    context: {
+                      category: actualCategory,
+                      previousId: previous.data?.id,
+                      proposalId: proposal.data?.id ?? previous.data?.proposalId,
+                      projectId:
+                        previous.data?.projectId ??
+                        (String(data.get('project') ?? '') || undefined),
+                    },
+                    file,
+                  });
+                  void navigate(`/documentos/${result.id}`, { state: { uploaded: true } });
+                } catch (cause) {
+                  setStage(
+                    cause instanceof ApiError && [413, 415, 422].includes(cause.status)
+                      ? 'Rechazado'
+                      : 'Error de carga',
+                  );
                 }
               }}
             >
-              <option value="other" disabled={!projects.length}>
-                Documento compartido
-              </option>
-              <option value="report" disabled={!projects.length}>
-                Informe final
-              </option>
-              <option value="evidence" disabled={!activities.length}>
-                Evidencia
-              </option>
-            </select>
-          </Field>
-          {category === 'evidence' ? (
-            <Field label="Actividad">
-              <select className="input" name="activity" required defaultValue="">
-                <option value="">Selecciona una actividad</option>
-                {activities.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          ) : (
-            <Field label="Proyecto">
-              <select
-                className="input"
-                name="project"
-                required
-                defaultValue={defaults.projectId ?? ''}
-              >
-                <option value="">Selecciona un proyecto</option>
-                {projects.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
-            </Field>
+              {previousId || proposalId ? (
+                <p className="text-sm">
+                  {previous.data?.name ?? proposal.data?.title} · {labels[actualCategory]}
+                </p>
+              ) : (
+                <>
+                  <Field label="Tipo de archivo">
+                    <select
+                      className="input"
+                      value={category}
+                      onChange={(event) => {
+                        setCategory(event.target.value === 'report' ? 'report' : 'other');
+                        setFile(undefined);
+                        setStage('');
+                        setError(undefined);
+                        mutation.reset();
+                      }}
+                    >
+                      <option value="other">Documento compartido</option>
+                      <option value="report">Informe final</option>
+                    </select>
+                  </Field>
+                  <Field label="Proyecto">
+                    <select
+                      className="input"
+                      name="project"
+                      required
+                      defaultValue={params.get('proyecto') ?? ''}
+                    >
+                      <option value="">Selecciona un proyecto</option>
+                      {eligible.map((item) => (
+                        <option value={item.id} key={item.id}>
+                          {item.title}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </>
+              )}
+              <Field label="Archivo">
+                <Input
+                  key={actualCategory}
+                  type="file"
+                  accept={actualCategory === 'report' ? '.pdf' : fileAccept}
+                  required
+                  disabled={mutation.isPending}
+                  onChange={(event) => {
+                    setError(undefined);
+                    setFile(undefined);
+                    setStage('');
+                    mutation.reset();
+                    const selected = event.target.files?.[0];
+                    if (!selected) return;
+                    try {
+                      fileType(selected, actualCategory);
+                      setFile(selected);
+                      setStage('Archivo seleccionado');
+                    } catch (cause) {
+                      setStage('Rechazado');
+                      setError(
+                        cause instanceof Error ? cause : new Error('No pudimos leer el archivo.'),
+                      );
+                    }
+                  }}
+                />
+              </Field>
+              {stage && (
+                <p role="status" className="text-sm text-muted">
+                  {stage}
+                </p>
+              )}
+              <Feedback error={error ?? mutation.error} />
+              <Button type="submit" disabled={!file || mutation.isPending}>
+                Subir archivo
+              </Button>
+            </form>
           )}
-        </>
+        </WorkflowState>
       )}
-      <Field label="Archivo">
-        <Input
-          key={category}
-          type="file"
-          accept={category === 'report' ? '.pdf' : fileAccept}
-          disabled={mutation.isPending}
-          required
-          onChange={(event) => {
-            setError(undefined);
-            setStage('');
-            mutation.reset();
-            const selected = event.target.files?.[0];
-            if (!selected) {
-              setFile(undefined);
-              return;
-            }
-            try {
-              fileType(selected, category);
-              setFile(selected);
-              setStage('Archivo seleccionado');
-            } catch (cause) {
-              setFile(undefined);
-              setStage('Rechazado');
-              setError(cause instanceof Error ? cause : new Error('No pudimos leer el archivo.'));
-            }
-          }}
-        />
-      </Field>
-      {stage && (
-        <p role="status" className="text-sm text-muted">
-          {stage}
-          {file && ` · ${file.name}`}
-        </p>
-      )}
-      <Feedback error={error ?? mutation.error} />
-      <Button type="submit" disabled={!file || mutation.isPending}>
-        Subir archivo
-      </Button>
-    </form>
+    </>
   );
 }
 

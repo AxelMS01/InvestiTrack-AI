@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { demoUsers } from '../../demo/database';
+import { demoProfiles } from '../../api/auth.api';
 import { useAuth } from './auth-context';
 import { roleLabels } from './model';
 import { roleSchema, userRoles, type Role } from '../../types/user';
@@ -36,12 +36,12 @@ export function RoleSwitcher({ workspace }: { workspace?: Role }) {
           <select
             className="input max-w-36 text-xs"
             disabled={auth.switching}
-            value={demoUsers.find((item) => item.id === auth.user?.id)?.role ?? auth.user.role}
-            onChange={(event) => auth.switchRole(roleSchema.parse(event.target.value))}
+            value={demoProfiles.find((item) => item.id === auth.user?.id)?.value ?? auth.user.role}
+            onChange={(event) => auth.switchRole(event.target.value)}
           >
-            {roleSchema.options.map((role) => (
-              <option key={role} value={role}>
-                {roleLabels[role]}
+            {demoProfiles.map((profile) => (
+              <option key={profile.id} value={profile.value}>
+                {roleLabels[profile.role]} · {profile.name}
               </option>
             ))}
           </select>

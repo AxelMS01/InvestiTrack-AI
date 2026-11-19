@@ -5,6 +5,20 @@ export const adminModule = {
   label: 'Administración',
   screens: [
     {
+      id: 'units',
+      label: 'Unidades académicas',
+      path: '/administracion/unidades',
+      status: 'MOCK_COMPLETE',
+      roles: ['admin'],
+    },
+    {
+      id: 'unit',
+      label: 'Detalle de unidad',
+      path: '/administracion/unidades/:id',
+      status: 'MOCK_COMPLETE',
+      roles: ['admin'],
+    },
+    {
       id: 'users',
       label: 'Usuarios',
       path: '/usuarios',

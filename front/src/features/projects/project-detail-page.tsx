@@ -60,7 +60,7 @@ export function ProjectDetailPage() {
             user &&
             can(user, 'proposal:read') &&
             (user.id === project.leadId ||
-              (can(user, 'proposal:review') && user.departmentId === project.departmentId)) && (
+              (can(user, 'proposal:decide') && user.departmentId === project.departmentId)) && (
               <div className="mt-4">
                 <ActionLink to={`/propuestas/${project.proposalId}`}>
                   Propuesta de origen

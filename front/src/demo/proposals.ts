@@ -62,13 +62,18 @@ export const demoProposals = {
         recordProposal(existing, existing.status, user.id, 'Borrador actualizado.');
         return existing;
       }
-      if (!user.departmentId)
-        fail(403, 'Tu cuenta requiere un departamento para registrar propuestas.');
+      const memberships = user.academicUnitIds ?? (user.departmentId ? [user.departmentId] : []);
+      const academicUnitId = memberships.find((id) =>
+        data.academicUnits.some((unit) => unit.id === id && unit.active),
+      );
+      if (!academicUnitId)
+        fail(403, 'Tu cuenta requiere una unidad académica activa para registrar propuestas.');
       const at = new Date().toISOString();
       const proposal: RegisteredProposal = {
         id: crypto.randomUUID(),
         ownerId: user.id,
         departmentId: user.departmentId,
+        academicUnitId,
         status: 'draft',
         title: details.title,
         abstract: details.abstract,

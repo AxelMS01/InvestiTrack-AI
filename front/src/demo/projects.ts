@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { canCloseProject, canManageProject, canReadProject } from '../features/auth/access-policy';
+import {
+  canCloseProject,
+  canCoordinateProject,
+  canManageProject,
+  canReadProject,
+} from '../features/auth/access-policy';
 import { can } from '../features/auth/model';
 import {
   projectInputSchema,
@@ -111,6 +116,7 @@ export const demoProjects = {
         lead: owner.name,
         leadId: owner.id,
         departmentId: proposal.departmentId,
+        academicUnitId: proposal.academicUnitId ?? proposal.departmentId,
         proposalId,
         supervisorIds,
         members: [],
@@ -124,7 +130,7 @@ export const demoProjects = {
     const data = readDatabase();
     manageable(data, id, user);
     return data.users
-      .filter((item) => item.id !== user.id && can(item, 'project:read'))
+      .filter((item) => item.id !== user.id && can(item, 'project:update'))
       .map(({ id, name, email }) => ({ id, name, email }));
   },
   member(input: {
@@ -136,6 +142,8 @@ export const demoProjects = {
     return updateDatabase((data) => {
       const project = manageable(data, input.id, user);
       const members = project.members ?? [];
+      if (input.responsibility === 'student')
+        fail(403, 'Propón al estudiante y espera la autorización de coordinación.');
       if (input.responsibility === 'remove') {
         if (
           data.activities.some(
@@ -148,13 +156,18 @@ export const demoProjects = {
           fail(409, 'Reasigna las actividades abiertas antes de retirar al colaborador.');
         project.members = members.filter((member) => member.userId !== input.userId);
       } else {
+        if (
+          project.evaluatorAssignments?.some(
+            (item) => item.evaluatorUserId === input.userId && item.status === 'ACTIVE',
+          )
+        )
+          fail(409, 'La persona tiene una asignación de evaluación vigente.');
         const member = projectMemberSchema.parse(input);
         const account = data.users.find((item) => item.id === member.userId);
         if (
           !account ||
           account.id === project.leadId ||
           !can(account, 'project:read') ||
-          (member.responsibility === 'student' && !account.roles.includes('STUDENT')) ||
           (member.responsibility === 'collaborator' && !account.roles.includes('RESEARCHER'))
         )
           fail(422, 'El perfil elegido no admite esa responsabilidad.');
@@ -196,7 +209,7 @@ export const demoProjects = {
     const user = requireDemoUser('project:close');
     const data = readDatabase();
     const project = visibleProject(data, user, id);
-    if (!project.supervisorIds?.includes(user.id))
+    if (!canCoordinateProject(user, project))
       fail(403, 'Solo la coordinación asignada puede consultar el cierre.');
     return { project, ...closureRequirements(data, id) };
   },

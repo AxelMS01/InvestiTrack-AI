@@ -5,6 +5,7 @@ export const documentSchema = z.object({
   id: entityIdSchema,
   projectId: entityIdSchema.optional(),
   proposalId: entityIdSchema.optional(),
+  evidenceVersionId: entityIdSchema.optional(),
   activityId: entityIdSchema.optional(),
   previousId: entityIdSchema.optional(),
   name: z.string().min(1),

@@ -72,7 +72,8 @@ export type ProposalDraft = z.infer<typeof proposalDraftSchema>;
 export const proposalFieldSchema = proposalDraftSchema.keyof();
 export const registeredProposalSchema = proposalSchema.extend({
   details: proposalDraftSchema,
-  departmentId: departmentSchema,
+  departmentId: departmentSchema.optional(),
+  academicUnitId: z.string().optional(),
   submissionVersion: z.number().int().positive().optional(),
   reviewerIds: z.array(entityIdSchema).default([]),
   allowedFields: z.array(proposalFieldSchema).default([]),

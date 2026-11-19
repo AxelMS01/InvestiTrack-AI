@@ -1,11 +1,9 @@
 package com.example.proposalservice.infraestructure.persistence;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.UUID;
 

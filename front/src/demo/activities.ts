@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { can } from '../features/auth/model';
-import { canManageProject, canReadProject } from '../features/auth/access-policy';
+import {
+  canCoordinateProject,
+  canManageProject,
+  canReadProject,
+  projectEvaluation,
+} from '../features/auth/access-policy';
 import { activitySchema, type Activity } from '../types/activity';
 import type { Project, User } from '../types';
 import { fail, requireDemoUser, visibleProject } from './access';
@@ -35,7 +40,8 @@ function canReadActivity(user: User, project: Project, activity: Activity) {
     can(user, 'activity:read') &&
     canReadProject(user, project) &&
     (project.leadId === user.id ||
-      project.supervisorIds?.includes(user.id) ||
+      canCoordinateProject(user, project) ||
+      Boolean(projectEvaluation(user, project)) ||
       activity.assigneeId === user.id ||
       activity.isMilestone)
   );

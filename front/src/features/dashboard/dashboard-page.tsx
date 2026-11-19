@@ -8,7 +8,9 @@ import { AsyncState, PageHeading } from '../../components/ui';
 import { demoAdministration } from '../../demo/administration';
 import { demoActivities } from '../../demo/activities';
 import { canCoordinateProposal } from '../../demo/access';
-import { demoDocuments } from '../../demo/documents';
+import { demoCoordination } from '../../demo/coordination';
+import { demoEvidences } from '../../demo/evidences';
+import { canCoordinateProject, projectEvaluation, projectUnit } from '../auth/access-policy';
 import { demoEvaluations } from '../../demo/evaluations';
 import { addDays, dateLabel, today } from '../../lib/format';
 import { config } from '../../lib/config';
@@ -29,12 +31,10 @@ const icons = [FolderKanban, CircleDot, Clock3, CheckCheck];
 type Task = { id: string; title: string; detail?: string; path: string; action?: string };
 
 export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
-  const { user, workspace } = useAuth();
+  const { user, workspace, unitId } = useAuth();
   const role = roleOverride ?? workspace ?? user?.role ?? 'researcher';
   const allowed = (permission: Parameters<typeof can>[1]) => Boolean(user && can(user, permission));
-  const projectQuery = useProjects(
-    role !== 'admin' && role !== 'reviewer' && allowed('project:read'),
-  );
+  const projectQuery = useProjects(role !== 'admin' && allowed('project:read'));
   const proposalQuery = useProposals(
     (role === 'coordinator' || role === 'researcher') && allowed('proposal:read'),
   );
@@ -58,10 +58,17 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
     demoAdministration.audit,
     config.demo && role === 'admin' && allowed('audit:read'),
   );
-  const documentQuery = useDemoQuery(
-    ['documents'],
-    demoDocuments.list,
-    config.demo && role === 'student' && allowed('document:read'),
+  const evidences = useDemoQuery(
+    ['academic-evidence', null],
+    demoEvidences.list,
+    config.demo && role !== 'admin' && allowed('project:evidence-read'),
+  );
+  const requests = useDemoQuery(
+    ['student-requests'],
+    demoCoordination.requests,
+    config.demo &&
+      (role === 'coordinator' || role === 'researcher') &&
+      allowed('project:student-requests'),
   );
   if (!user) return null;
   const queries = [
@@ -71,7 +78,8 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
     evaluationQuery,
     userQuery,
     auditQuery,
-    documentQuery,
+    evidences,
+    requests,
   ].filter((query) => query.isEnabled);
   if (queries.some((query) => query.isPending)) return <AsyncState loading />;
   const failed = queries.find((query) => query.error);
@@ -79,25 +87,48 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
     (item) =>
       !config.demo ||
       (role === 'coordinator'
-        ? item.supervisorIds?.includes(user.id)
-        : role === 'student'
-          ? item.members?.some(
-              (member) => member.userId === user.id && member.responsibility === 'student',
-            )
-          : item.leadId === user.id ||
-            item.members?.some(
-              (member) => member.userId === user.id && member.responsibility === 'collaborator',
-            )),
+        ? canCoordinateProject(user, item) && (!unitId || unitId === projectUnit(item))
+        : role === 'reviewer'
+          ? Boolean(projectEvaluation(user, item))
+          : role === 'student'
+            ? item.members?.some(
+                (member) => member.userId === user.id && member.responsibility === 'student',
+              )
+            : item.leadId === user.id ||
+              item.members?.some(
+                (member) => member.userId === user.id && member.responsibility === 'collaborator',
+              )),
   );
   const proposals = (proposalQuery.data ?? []).filter(
     (item) =>
       !config.demo ||
-      (role === 'coordinator' ? canCoordinateProposal(user, item) : item.ownerId === user.id),
+      (role === 'coordinator'
+        ? canCoordinateProposal(user, item) &&
+          (!unitId || unitId === (item.academicUnitId ?? item.departmentId))
+        : item.ownerId === user.id),
   );
   const tasks = (activityQuery.data ?? []).filter(
     (item) =>
       projects.some((project) => project.id === item.projectId) &&
       (role !== 'student' || item.assigneeId === user.id),
+  );
+  const academicEvidence = (evidences.data ?? []).filter((item) =>
+    role === 'reviewer'
+      ? item.assigned
+      : role === 'student'
+        ? item.ownerUserId === user.id
+        : projects.some((project) => project.id === item.projectId),
+  );
+  const pendingEvidence = academicEvidence.filter((item) => item.pendingGrade);
+  const corrections = academicEvidence.filter((item) =>
+    ['CHANGES_REQUESTED', 'REDO_REQUESTED'].includes(item.status),
+  );
+  const pendingRequests = (requests.data ?? []).filter(
+    (item) =>
+      item.status === 'PENDING' &&
+      (role === 'researcher'
+        ? item.proposedBy === user.id
+        : item.canDecide && (!unitId || item.unitId === unitId)),
   );
   const pending = tasks.filter((item) => !['completed', 'cancelled'].includes(item.status));
   const upcoming = pending.filter((item) => item.dueDate >= today() && item.dueDate <= addDays(30));
@@ -161,6 +192,7 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
       primary = { id: 'users', title: 'Gestionar usuarios', path: '/usuarios' };
   } else if (role === 'coordinator') {
     if (proposalQuery.isEnabled) stats.push(['Propuestas recibidas', proposals.length]);
+    if (requests.isEnabled) stats.push(['Incorporaciones pendientes', pendingRequests.length]);
     if (evaluationQuery.isEnabled)
       stats.push(
         ['Evaluaciones pendientes', reviewPending.length],
@@ -177,7 +209,14 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
     if (activityQuery.isEnabled)
       stats.push(['Hitos próximos', upcoming.filter((item) => item.isMilestone).length]);
     work = [
-      ...(allowed('proposal:review') ? decisions : []).map((item) => ({
+      ...pendingRequests.map((item) => ({
+        id: item.id,
+        title: item.student,
+        detail: item.project,
+        path: `/solicitudes-estudiantes/${item.id}`,
+        action: 'Revisar solicitud',
+      })),
+      ...(allowed('proposal:decide') ? decisions : []).map((item) => ({
         id: item.id,
         title: item.title,
         path: `/evaluaciones/${item.id}/decision`,
@@ -192,7 +231,8 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
     ]
       .filter((item) => item.action !== 'Asignar evaluación' || allowed('evaluation:assign'))
       .slice(0, 5);
-    if (allowed('evaluation:read'))
+    if (pendingRequests.length) primary = work[0];
+    else if (allowed('evaluation:read'))
       primary = {
         id: 'reviews',
         title: 'Atender evaluaciones pendientes',
@@ -211,7 +251,25 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
         ],
         ['Evaluaciones enviadas', reviews.filter((item) => item.status === 'submitted').length],
       ];
-    work = allowed('evaluation:create') ? reviewWork : [];
+    if (evidences.isEnabled)
+      stats.push(
+        ['Evidencias pendientes', pendingEvidence.length],
+        [
+          'Evidencias con calificación registrada',
+          academicEvidence.filter((item) => item.gradeCount > 0).length,
+        ],
+      );
+    if (projectQuery.isEnabled) stats.push(['Proyectos asignados', projects.length]);
+    work = [
+      ...pendingEvidence.map((item) => ({
+        id: item.id,
+        title: item.title,
+        detail: item.projectTitle,
+        path: `/evidencias/${item.id}/evaluar`,
+        action: 'Evaluar evidencia',
+      })),
+      ...(allowed('evaluation:create') ? reviewWork : []),
+    ].slice(0, 5);
     primary =
       work[0] ??
       (allowed('evaluation:read')
@@ -225,13 +283,36 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
         ['Entregas próximas', upcoming.length],
         ['Actividades completadas', tasks.filter((item) => item.status === 'completed').length],
       );
-    if (documentQuery.isEnabled && activityQuery.isEnabled)
-      stats.push([
-        'Evidencias pendientes',
-        pending.filter(
-          (item) => !documentQuery.data?.some((document) => document.activityId === item.id),
-        ).length,
-      ]);
+    if (evidences.isEnabled)
+      stats.push(
+        [
+          'Borradores de evidencia',
+          academicEvidence.filter((item) => item.status === 'DRAFT').length,
+        ],
+        ['Correcciones solicitadas', corrections.length],
+        [
+          'Calificaciones publicadas',
+          academicEvidence.reduce((sum, item) => sum + item.gradeCount, 0),
+        ],
+      );
+    work = [
+      ...corrections.map((item) => ({
+        id: item.id,
+        title: item.title,
+        detail: item.activityTitle,
+        path: `/evidencias/${item.id}?tab=retroalimentacion`,
+        action: 'Atender corrección',
+      })),
+      ...academicEvidence
+        .filter((item) => item.status === 'DRAFT')
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          path: `/evidencias/${item.id}`,
+          action: 'Continuar entrega',
+        })),
+      ...work,
+    ].slice(0, 5);
     primary =
       work[0] ??
       (allowed('activity:read')
@@ -256,6 +337,8 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
         ['Actividades próximas', upcoming.length],
         ['Hitos próximos', upcoming.filter((item) => item.isMilestone).length],
       );
+    if (requests.isEnabled) stats.push(['Estudiantes por autorizar', pendingRequests.length]);
+    if (evidences.isEnabled) stats.push(['Evidencias entregadas', academicEvidence.length]);
     work = [
       ...drafts.map((item) => ({
         id: item.id,
@@ -266,6 +349,14 @@ export function DashboardPage({ roleOverride }: { roleOverride?: Role }) {
             : `/propuestas/${item.id}`,
         action: 'Continuar propuesta',
       })),
+      ...academicEvidence
+        .filter((item) => ['SUBMITTED', 'RESUBMITTED'].includes(item.status))
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          path: `/evidencias/${item.id}?tab=retroalimentacion`,
+          action: 'Revisar entrega',
+        })),
       ...work,
     ].slice(0, 5);
     primary =

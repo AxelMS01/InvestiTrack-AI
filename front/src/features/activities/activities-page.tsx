@@ -6,7 +6,9 @@ import { Button } from '../../components/button';
 import { Input } from '../../components/input';
 import { PageHeading } from '../../components/ui';
 import { activityInputSchema, activityStatusLabels, demoActivities } from '../../demo/activities';
-import { demoDocuments } from '../../demo/documents';
+import { demoEvidences } from '../../demo/evidences';
+import { evidenceStatusLabels } from '../../types/evidence';
+import { projectUnit } from '../auth/access-policy';
 import { dateLabel, today } from '../../lib/format';
 import type { Activity, Project } from '../../types';
 import { canManageProject } from '../auth/access-policy';
@@ -21,9 +23,10 @@ function dueLabel(item: Activity) {
 
 export function ActivitiesPage({ view = 'list' }: { view?: 'list' | 'milestones' | 'calendar' }) {
   const [params, setParams] = useSearchParams();
-  const { user, workspace } = useAuth();
+  const { user, workspace, unitId } = useAuth();
   const query = useDemoQuery(['activities'], demoActivities.list);
   const projectId = params.get('proyecto') ?? '';
+  const projects = useProjects();
   const own = params.get('vista') === 'mias' || workspace === 'student';
   const [period, setPeriod] = useState('');
   const title =
@@ -37,13 +40,17 @@ export function ActivitiesPage({ view = 'list' }: { view?: 'list' | 'milestones'
   const entries = (query.data ?? []).filter(
     (item) =>
       (!projectId || item.projectId === projectId) &&
+      (workspace !== 'coordinator' ||
+        !unitId ||
+        projects.data?.some(
+          (project) => project.id === item.projectId && projectUnit(project) === unitId,
+        )) &&
       (!own || item.assigneeId === user?.id || view === 'milestones') &&
       (view !== 'milestones' || item.isMilestone) &&
       (view !== 'calendar' ||
         (!['completed', 'cancelled'].includes(item.status) &&
           (!period || item.dueDate.startsWith(period)))),
   );
-  const projects = useProjects();
   const managed = Boolean(
     user &&
     can(user, 'activity:create') &&
@@ -132,10 +139,11 @@ export function ActivityDetailPage() {
   const { id = '' } = useParams();
   const { user } = useAuth();
   const query = useDemoQuery(['activity', id], () => demoActivities.detail(id));
-  const documents = useDemoQuery(
-    ['activity-documents', id],
-    () => demoDocuments.list().filter((item) => item.activityId === id),
-    Boolean(query.data),
+  const evidenceEnabled = Boolean(user && can(user, 'project:evidence-read') && query.data);
+  const evidence = useDemoQuery(
+    ['activity-evidences', id],
+    () => demoEvidences.list().filter((item) => item.activityId === id),
+    evidenceEnabled,
   );
   const mutation = useWorkflowMutation(demoActivities.updateStatus);
   const result = query.data;
@@ -184,11 +192,15 @@ export function ActivityDetailPage() {
                 <ActionLink to={`/actividades/${id}/editar`}>Editar actividad</ActionLink>
               )}
               {user &&
-                can(user, 'document:upload') &&
+                can(user, 'project:evidence-submit') &&
                 result.project.status !== 'completed' &&
                 result.activity.status !== 'cancelled' &&
-                (result.activity.assigneeId === user.id || result.manager) && (
-                  <ActionLink to={`/documentos/subir?actividad=${id}`} primary>
+                result.activity.assigneeId === user.id &&
+                !result.activity.isMilestone &&
+                result.project.members?.some(
+                  (item) => item.userId === user.id && item.responsibility === 'student',
+                ) && (
+                  <ActionLink to={`/evidencias/nueva?actividad=${id}`} primary>
                     Entregar evidencia
                   </ActionLink>
                 )}
@@ -225,18 +237,27 @@ export function ActivityDetailPage() {
               success={mutation.isSuccess && 'Estado actualizado.'}
             />
           </section>
-          <section className="mt-5">
-            <h2 className="section-title mb-3">Evidencias entregadas</h2>
-            <WorkflowState query={documents}>
-              <WorkflowList empty="Aún no hay evidencias entregadas.">
-                {(documents.data ?? []).map((item) => (
-                  <article key={item.id} className="p-4">
-                    <ActionLink to={`/documentos/${item.id}`}>{item.name}</ActionLink>
-                  </article>
-                ))}
-              </WorkflowList>
-            </WorkflowState>
-          </section>
+          {evidenceEnabled && (
+            <section className="mt-5">
+              <h2 className="section-title mb-3">Evidencias de la actividad</h2>
+              <WorkflowState query={evidence}>
+                <WorkflowList empty="Aún no hay evidencias para esta actividad.">
+                  {(evidence.data ?? []).map((item) => (
+                    <article
+                      key={item.id}
+                      className="flex flex-wrap items-center justify-between gap-3 p-4"
+                    >
+                      <div>
+                        <p className="font-medium">{item.title}</p>
+                        <p className="text-xs text-muted">{evidenceStatusLabels[item.status]}</p>
+                      </div>
+                      <ActionLink to={`/evidencias/${item.id}`}>Consultar evidencia</ActionLink>
+                    </article>
+                  ))}
+                </WorkflowList>
+              </WorkflowState>
+            </section>
+          )}
         </>
       )}
     </WorkflowState>

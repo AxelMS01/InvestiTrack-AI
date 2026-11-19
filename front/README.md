@@ -17,19 +17,17 @@ Si las dependencias ya están instaladas, basta con levantar Vite. Copia `.env.e
 
 `.env.example` habilita la demostración. En el login selecciona uno de los cinco perfiles. El **Simulador de perfiles** cambia la cuenta ficticia y limpia su caché privada. En el perfil de Elena, **Espacio de trabajo** alterna investigación y evaluación dentro de la misma cuenta. Volver a cargar la pestaña cierra la sesión demo.
 
-## Recorrido de demostración
+## Recorrido de demostración V2
 
-1. Entra como **Investigador**. Crea una propuesta, guarda un borrador, complétalo y confirma el envío desde la revisión. Desde un borrador puedes adjuntar el protocolo.
-2. Cambia a **Coordinador**. Abre **Propuestas recibidas**, asigna la propuesta a Daniel y configura una fecha límite.
-3. Cambia a **Evaluador**. Abre la rúbrica desde **Evaluaciones pendientes**, califica los criterios, guarda un borrador si deseas volver después y envía la evaluación. El catálogo inicial incluye una asignación disponible para practicar.
-4. Vuelve a **Coordinador**. Consulta los resultados. Registra una decisión, por ejemplo aprobar. Si solicitas modificaciones, selecciona los campos que podrá cambiar el investigador.
-5. Convierte la propuesta aprobada desde **Proyectos supervisados → Convertir propuesta**. Como investigador responsable, abre el proyecto, agrega a Sofía como estudiante y crea un hito y una actividad asociada. Usa fechas dentro del periodo aprobado.
-6. Entra como **Estudiante**. Abre **Mis actividades**, entrega una evidencia y actualiza el estado de la tarea. Los archivos autorizados se pueden consultar y descargar desde el detalle.
-7. Como **Investigador**, abre **Informe final**, carga un PDF y confirma su presentación. Como **Coordinador** asignado, abre **Reportes y cierre** y confirma el cierre cuando el trabajo esté resuelto.
-8. Como **Administrador**, usa **Usuarios**, **Asignación de roles** y **Auditoría** para probar la administración de accesos.
-9. Desde **Asistente IA**, consulta el estado de un proyecto o propuesta autorizados. Si el recurso tiene archivos, el chat permite abrirlos desde sus referencias de catálogo.
+- **Andrea, administración.** Abre **Unidades académicas** para registrar o editar unidades y gestionar vínculos. El directorio, los roles y la auditoría se encuentran en el mismo panel.
+- **Carlos, coordinación ambiental y social.** En **Mi coordinación** puedes elegir unidad. Revisa la solicitud de Mateo y autorízala. En un proyecto supervisado, abre **Asignar evaluador**, elige a Lucía y confirma. **Mariana** coordina salud e ingeniería y permite probar el aislamiento entre unidades.
+- **Elena, investigación.** En **Mis proyectos → Participantes** consulta el equipo y propón estudiantes. El proyecto de monitoreo tiene una solicitud pendiente de ejemplo. Para generar otra, completa primero el flujo de una propuesta y conviértela. En una evidencia entregada, abre **Retroalimentación** y solicita correcciones.
+- **Sofía, estudiante.** En **Mis actividades** abre «Registrar mediciones de campo». Crea una evidencia con su propio nombre, adjunta archivos, guarda y confirma la entrega. **Mis entregas** muestra documentos e historial por versión. **Mis calificaciones** incluye únicamente las publicadas. **Mateo** pasa a ser miembro cuando coordinación confirma su solicitud y requiere una actividad asignada para entregar.
+- **Daniel, evaluación.** En **Evidencias pendientes** abre la entrega. Inicia la evaluación, consulta los archivos, completa la rúbrica de demostración y registra la nota. **Lucía** parte sin asignación y el proyecto aparece al confirmar su designación. Elena puede cambiar al espacio de evaluación desde la misma cuenta, con los mismos permisos y restricciones de conflicto de interés.
 
-La demostración guarda sus registros en `invesctictrack.demo.workspace.v2` y sus archivos en la base IndexedDB `invesctictrack.demo.files`. El historial de chat vive en memoria. Para reiniciar datos ficticios usa los controles de almacenamiento del navegador sobre el origen local. Las claves antiguas de proyectos y propuestas se importan al iniciar una demostración sin estado nuevo.
+El catálogo inicial incluye entregas con nota publicada, con nota reservada y pendiente de evaluación. Las nuevas calificaciones demo se registran sin publicar. El simulador y la cabecera identifican el uso de datos ficticios.
+
+La demostración conserva registros en `invesctictrack.demo.workspace.v2` y archivos en la base IndexedDB `invesctictrack.demo.files`. El historial de chat vive en memoria. Las demostraciones previas se conservan y los archivos históricos se consultan en el repositorio. Una demostración nueva carga los datos de ejemplo V2.
 
 ## Comprobaciones
 
@@ -48,6 +46,6 @@ VITE_DEMO_MODE=false
 VITE_API_URL=/api
 ```
 
-Este ajuste habilita el transporte histórico del cliente para consultas y sesión por cookie. El servidor con controladores REST, identidad institucional y autorización de recursos es un requisito para el modo institucional. Las nuevas operaciones muestran su estado de integración pendiente. Las rutas directas requieren una regla de fallback a `index.html` al desplegar archivos estáticos.
+Este ajuste habilita el transporte histórico del cliente para consultas y sesión por cookie. El repositorio contiene el servicio Spring de propuestas con contrato JWT, paginación y ETag. Su conexión requiere el flujo de identidad y el gateway institucionales, además del mapeo de sus DTO. Las extensiones V2 todavía requieren servicios de identidad, proyectos y documentos. El frontend indica la integración pendiente al acceder a operaciones exclusivas de demostración. Las rutas directas requieren una regla de fallback a `index.html` al desplegar archivos estáticos.
 
-Consulta [la matriz y los contratos pendientes](../docs/frontend-progress.md) y [la arquitectura del frontend](./ARCHITECTURE.md).
+Consulta [la matriz V2 y los contratos pendientes](../docs/frontend-v2-progress.md) y [la arquitectura del frontend](./ARCHITECTURE.md).

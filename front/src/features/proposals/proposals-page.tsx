@@ -9,11 +9,15 @@ import { useProposals } from '../../api/proposals.queries';
 
 export function ProposalsPage() {
   const query = useProposals();
-  const { user, workspace } = useAuth();
+  const { user, workspace, unitId } = useAuth();
   const proposals = (query.data ?? []).filter((proposal) => {
     if (!config.demo || !user) return true;
     if (workspace === 'reviewer') return proposal.reviewerIds.includes(user.id);
-    if (workspace === 'coordinator') return canCoordinateProposal(user, proposal);
+    if (workspace === 'coordinator')
+      return (
+        canCoordinateProposal(user, proposal) &&
+        (!unitId || unitId === (proposal.academicUnitId ?? proposal.departmentId))
+      );
     return proposal.ownerId === user.id;
   });
   return (

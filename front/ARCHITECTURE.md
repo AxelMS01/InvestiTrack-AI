@@ -22,8 +22,14 @@ La visibilidad de proyectos usa investigación principal, coordinación asignada
 - El equipo y las actividades se gestionan dentro del alcance del proyecto. Los avances se recalculan al actualizar actividades. Un informe final vigente debe presentarse antes de que la coordinación asignada pueda cerrar el proyecto.
 - Los documentos se validan en el navegador y se abren mediante una URL de objeto temporal. El asistente de demostración presenta resúmenes deterministas de registros autorizados y referencias de catálogo a documentos. El historial se vuelve a filtrar cuando pierde vigencia un permiso.
 
+## Extensión V2
+
+La coordinación usa unidades autorizadas y supervisión del proyecto. La asignación de seguimiento habilita al evaluador solo sobre el proyecto asignado y se comprueba junto con los conflictos de interés. La aprobación de una solicitud activa la membresía y registra la decisión en la misma actualización del adaptador.
+
+El agregado de evidencia tiene su propio código, título, estados y versiones académicas. Las versiones apuntan a archivos con metadatos de documento y contenido en IndexedDB. El visualizador usa URLs temporales y las revoca al salir. Las revisiones y calificaciones son registros independientes. El adaptador compara versiones antes de escribir y solo devuelve notas publicadas a su estudiante.
+
 ## Transporte y verificación
 
-El documento [api-endpoints.md](../Backend/.agents/api-endpoints.md) describe los contratos institucionales esperados. El cliente histórico está aislado del adaptador demo. La sustitución por el transporte institucional requiere un gateway operativo, OIDC, contratos Zod de las respuestas reales y pruebas de integración.
+El documento [api-endpoints.md](../Backend/.agents/api-endpoints.md) describe los contratos institucionales esperados. El cliente histórico está aislado del adaptador demo. El servicio de propuestas existente usa JWT de OIDC, paginación y ETag. La extensión V2 sigue en contrato propuesto. La conexión institucional requiere un gateway operativo, DTO verificados y pruebas de integración. Consulta [el estado V2](../docs/frontend-v2-progress.md).
 
 Ejecuta los comandos de calidad y el recorrido descritos en [README.md](./README.md).

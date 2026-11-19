@@ -1,6 +1,8 @@
 import type { Role } from '../types';
 
 export type ModuleId =
+  | 'coordination'
+  | 'evidences'
   | 'auth'
   | 'dashboard'
   | 'proposals'

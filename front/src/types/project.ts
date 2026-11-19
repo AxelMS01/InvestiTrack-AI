@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { dateSchema } from './shared';
 import { departmentSchema } from './department';
+import { evaluatorAssignmentSchema } from './academic';
 
 export const statusSchema = z.enum(['planning', 'active', 'review', 'completed']);
 export type ProjectStatus = z.infer<typeof statusSchema>;
@@ -49,6 +50,8 @@ export const projectMemberSchema = z.object({
 });
 export const projectSchema = z.object({
   departmentId: departmentSchema.optional(),
+  academicUnitId: z.string().optional(),
+  evaluatorAssignments: z.array(evaluatorAssignmentSchema).optional(),
   id: z.string(),
   code: z.string(),
   title: z.string(),

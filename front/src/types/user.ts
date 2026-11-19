@@ -28,6 +28,8 @@ const userFields = z.object({
   id: z.string(),
   email: z.email(),
   departmentId: departmentSchema.optional(),
+  academicUnitIds: z.array(z.string()).optional(),
+  coordinationUnitIds: z.array(z.string()).optional(),
   assignedProjectIds: z.array(z.string()).optional(),
   status: accountStatusSchema.optional(),
   capabilities: z.array(z.string()).optional(),

@@ -1,7 +1,13 @@
+import { canReadEvidenceVersion } from './evidence-policy';
 import { demoSessionGeneration } from '../api/auth.api';
 import { demoFiles } from './files';
 import type { Document } from '../types/document';
-import { canManageProject, canReadProject } from '../features/auth/access-policy';
+import {
+  canCoordinateProject,
+  canManageProject,
+  canReadProject,
+  projectEvaluation,
+} from '../features/auth/access-policy';
 import { can } from '../features/auth/model';
 import type { User } from '../types';
 import {
@@ -47,7 +53,7 @@ export function fileType(file: File, category: Context['category']) {
   return mime;
 }
 
-async function validateContent(file: File, mime: string) {
+export async function validateContent(file: File, mime: string) {
   const bytes = new Uint8Array(
     await new Promise<ArrayBuffer>((resolve, reject) => {
       const reader = new FileReader();
@@ -76,17 +82,24 @@ async function validateContent(file: File, mime: string) {
 }
 
 function readable(data: DemoDatabase, user: User, item: Document) {
+  if (item.evidenceVersionId) {
+    const version = data.evidenceVersions.find(
+      (entry) => entry.id === item.evidenceVersionId && entry.documentIds.includes(item.id),
+    );
+    return Boolean(version && canReadEvidenceVersion(data, user, version));
+  }
   if (item.proposalId) {
     const proposal = data.proposals.find((entry) => entry.id === item.proposalId);
     return Boolean(proposal && canReadProposal(user, proposal));
   }
   const project = data.projects.find((entry) => entry.id === item.projectId);
   if (!project || !canReadProject(user, project)) return false;
+  if (projectEvaluation(user, project) && item.category !== 'other') return false;
   if (item.activityId) {
     const activity = data.activities.find((entry) => entry.id === item.activityId);
     return (
       project.leadId === user.id ||
-      Boolean(project.supervisorIds?.includes(user.id)) ||
+      canCoordinateProject(user, project) ||
       activity?.assigneeId === user.id
     );
   }
@@ -154,7 +167,7 @@ export const demoDocuments = {
     const user = requireDemoUser('document:read');
     const data = readDatabase();
     const item = demoDocuments.detail(id);
-    if (data.documents.some((entry) => entry.previousId === id))
+    if (item.category === 'evidence' || data.documents.some((entry) => entry.previousId === id))
       return { upload: false, remove: false };
     try {
       writable(data, user, item);
@@ -168,6 +181,8 @@ export const demoDocuments = {
   },
   async upload(context: Context, file: File, onProcessing?: () => void) {
     const actor = requireDemoUser('document:upload');
+    if (context.category === 'evidence')
+      fail(409, 'Crea o actualiza la entrega desde el módulo de evidencias.');
     const generation = demoSessionGeneration();
     writable(readDatabase(), actor, context);
     const mimeType = fileType(file, context.category);
@@ -238,6 +253,8 @@ export const demoDocuments = {
     updateDatabase((data) => {
       const item = data.documents.find((entry) => entry.id === id && readable(data, user, entry));
       if (!item) fail(404, 'El archivo no está disponible.');
+      if (item.category === 'evidence')
+        fail(409, 'El archivo forma parte del historial de evidencias.');
       writable(data, user, item);
       if (item.uploadedBy !== user.id || data.documents.some((entry) => entry.previousId === id))
         fail(409, 'Solo puedes eliminar tu archivo cuando es la última versión.');

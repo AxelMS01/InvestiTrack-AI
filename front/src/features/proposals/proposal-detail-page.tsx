@@ -98,7 +98,7 @@ export function ProposalDetailPage() {
           <PageHeading
             eyebrow={proposalStatusLabels[proposal.status]}
             title={proposal.title || 'Propuesta sin título'}
-            description={`${departmentLabels[proposal.departmentId]} · ${proposal.details.area} · Versión ${proposal.version}`}
+            description={`${proposal.departmentId ? departmentLabels[proposal.departmentId] : 'Unidad académica asignada'} · ${proposal.details.area} · Versión ${proposal.version}`}
             action={<ActionLink to="/propuestas">Volver a propuestas</ActionLink>}
           />
           <div className="mb-5 space-y-3">

@@ -8,19 +8,12 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { AsyncState } from '../../components/ui';
 import { config } from '../../lib/config';
-import { authApi } from '../../api/auth.api';
+import { authApi, demoProfiles } from '../../api/auth.api';
 import { useSession, sessionKey } from '../../api/auth.queries';
-import {
-  credentialsSchema,
-  roleLabels,
-  roleSchema,
-  type Credentials,
-  type Role,
-  type User,
-} from './model';
+import { credentialsSchema, roleLabels, type Credentials, type User } from './model';
 
 export function LoginPage() {
-  const [role, setRole] = useState<Role>('admin');
+  const [role, setRole] = useState('admin');
   const client = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,11 +65,11 @@ export function LoginPage() {
             id="role"
             className="input"
             value={role}
-            onChange={(event) => setRole(roleSchema.parse(event.target.value))}
+            onChange={(event) => setRole(event.target.value)}
           >
-            {roleSchema.options.map((item) => (
-              <option key={item} value={item}>
-                {roleLabels[item]}
+            {demoProfiles.map((profile) => (
+              <option key={profile.id} value={profile.value}>
+                {roleLabels[profile.role]} · {profile.name}
               </option>
             ))}
           </select>

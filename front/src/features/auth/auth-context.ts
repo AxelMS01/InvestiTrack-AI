@@ -10,7 +10,9 @@ export interface AuthContextValue {
   switchError: Error | null;
   workspace?: Role;
   switchWorkspace?: (role: Role) => void;
-  switchRole: (role: Role) => void;
+  unitId?: string;
+  switchUnit?: (id: string | undefined) => void;
+  switchRole: (profile: string) => void;
   retry: () => void;
 }
 export const AuthContext = createContext<AuthContextValue | null>(null);

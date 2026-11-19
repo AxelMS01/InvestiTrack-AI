@@ -16,9 +16,9 @@ import java.util.UUID;
     name = "evaluation_criterion",
     uniqueConstraints = {
         @UniqueConstraint(name = "uq_evaluation_criterion_code", columnNames = {"code"})
-    }
+    },
+    check = @CheckConstraint(name = "ck_evaluation_criterion_values", constraint = "weight > 0")
 )
-@org.hibernate.annotations.Check(constraints = "(weight > 0)")
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

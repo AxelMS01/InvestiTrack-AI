@@ -11,7 +11,7 @@ import { demoReports } from '../../demo/reports';
 import { dateLabel } from '../../lib/format';
 import { downloadBlob } from '../../lib/download';
 import { statusLabels } from '../../types/project';
-import { canManageProject } from '../auth/access-policy';
+import { canCoordinateProject, canManageProject, projectUnit } from '../auth/access-policy';
 import { useAuth } from '../auth/auth-context';
 import { can } from '../auth/model';
 import { ActionLink, Feedback, Field, WorkflowList, WorkflowState } from '../shared/workflow-ui';
@@ -24,8 +24,9 @@ function csvCell(value: string | number) {
 }
 
 export function ReportsPage({ exporting = false }: { exporting?: boolean }) {
-  const { user } = useAuth();
+  const { user, workspace, unitId } = useAuth();
   const [params] = useSearchParams();
+  const closureView = params.get('vista') === 'cierre';
   const finalReports = params.get('vista') === 'informes';
   const query = useProjects();
   const [status, setStatus] = useState('');
@@ -35,6 +36,9 @@ export function ReportsPage({ exporting = false }: { exporting?: boolean }) {
   const visible = (query.data ?? []).filter(
     (item) =>
       !invalidDates &&
+      (!closureView ||
+        Boolean(user && can(user, 'project:close') && canCoordinateProject(user, item))) &&
+      (workspace !== 'coordinator' || !unitId || unitId === projectUnit(item)) &&
       (!status || item.status === status) &&
       (!from || item.endDate >= from) &&
       (!to || item.endDate <= to),
@@ -68,7 +72,9 @@ export function ReportsPage({ exporting = false }: { exporting?: boolean }) {
             ? 'Exportación de reportes'
             : finalReports
               ? 'Informes finales'
-              : 'Reportes de investigación'
+              : closureView
+                ? 'Cierre de proyectos'
+                : 'Reportes de investigación'
         }
         description="Consulta el estado y avance de tus proyectos. Filtra los registros por fecha prevista de cierre."
         action={
@@ -143,7 +149,7 @@ export function ReportsPage({ exporting = false }: { exporting?: boolean }) {
                 <ActionLink to={`/reportes/proyectos/${item.id}/informe-final`}>
                   Informe final
                 </ActionLink>
-                {user && can(user, 'project:close') && item.supervisorIds?.includes(user.id) && (
+                {user && can(user, 'project:close') && canCoordinateProject(user, item) && (
                   <ActionLink to={`/reportes/proyectos/${item.id}/cierre`}>
                     {item.closedAt ? 'Consultar cierre' : 'Revisar cierre'}
                   </ActionLink>

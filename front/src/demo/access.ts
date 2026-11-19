@@ -2,7 +2,7 @@ import { currentDemoUser } from '../api/auth.api';
 import { ApiError } from '../api/http-client';
 import { config } from '../lib/config';
 import { can, type Capability } from '../features/auth/model';
-import { canReadProject } from '../features/auth/access-policy';
+import { canCoordinateUnit, canReadProject } from '../features/auth/access-policy';
 import type { DemoDatabase } from './database';
 import { userRoles } from '../types/user';
 import type { User } from '../types';
@@ -22,10 +22,9 @@ export function requireDemoUser(capability?: Capability) {
 }
 export function canCoordinateProposal(user: User, proposal: RegisteredProposal) {
   return (
-    can(user, 'proposal:review') &&
+    can(user, 'proposal:decide') &&
     user.id !== proposal.ownerId &&
-    Boolean(user.departmentId) &&
-    user.departmentId === proposal.departmentId
+    canCoordinateUnit(user, proposal.academicUnitId ?? proposal.departmentId)
   );
 }
 export function canReadProposal(user: User, proposal: RegisteredProposal) {

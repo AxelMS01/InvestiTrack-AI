@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useParams } from 'react-router-dom';
 import { useDemoQuery, useWorkflowMutation } from '../../api/demo.queries';
+import { demoCoordination } from '../../demo/coordination';
 import { useProject } from '../../api/projects.queries';
 import { Button } from '../../components/button';
 import { Input } from '../../components/input';
@@ -17,7 +18,7 @@ import {
   statusSchema,
   type Project,
 } from '../../types/project';
-import { canCloseProject, canManageProject } from '../auth/access-policy';
+import { canCloseProject, canCoordinateProject, canManageProject } from '../auth/access-policy';
 import { can } from '../auth/model';
 import { useAuth } from '../auth/auth-context';
 import { ActionLink, Feedback, Field, WorkflowList, WorkflowState } from '../shared/workflow-ui';
@@ -37,7 +38,15 @@ export function ProjectTabs({ project }: { project: Project }) {
           <ActionLink to={`${path}/seguimiento`}>Seguimiento</ActionLink>
         </>
       )}
-      <ActionLink to={`${path}/colaboradores`}>Colaboradores</ActionLink>
+      <ActionLink to={`${path}/colaboradores`}>Participantes</ActionLink>
+      {can(user, 'project:evidence-read') && (
+        <ActionLink to={`${path}/evidencias`}>Evidencias</ActionLink>
+      )}
+      {can(user, 'project:assign-evaluator') &&
+        canCoordinateProject(user, project) &&
+        project.status !== 'completed' && (
+          <ActionLink to={`${path}/evaluadores`}>Asignar evaluador</ActionLink>
+        )}
       {can(user, 'document:read') && (
         <ActionLink to={`/documentos?proyecto=${project.id}`}>Documentos</ActionLink>
       )}
@@ -175,13 +184,48 @@ export function ProjectCollaboratorsPage() {
     () => demoProjects.directory(id),
     manage,
   );
+  const participants = useDemoQuery(
+    ['participants', id],
+    () => demoCoordination.participants(id),
+    Boolean(project),
+  );
   const mutation = useWorkflowMutation(demoProjects.member);
   return (
     <WorkflowState query={query}>
       {project && (
         <>
-          <PageHeading eyebrow={project.code} title="Colaboradores" description={project.title} />
+          <PageHeading
+            eyebrow={project.code}
+            title="Estudiantes y colaboradores"
+            description={project.title}
+          />
           <ProjectTabs project={project} />
+          <WorkflowState query={participants}>
+            {participants.data && (
+              <section className="panel mb-5 space-y-3 p-5">
+                <p className="text-sm">
+                  Unidad académica · {participants.data.unit ?? 'Sin asignar'}
+                </p>
+                <p className="text-sm">
+                  Coordinación responsable ·{' '}
+                  {participants.data.coordinators.join(', ') || 'Sin asignar'}
+                </p>
+                <p className="text-sm">
+                  Evaluadores vigentes · {participants.data.evaluators.join(', ') || 'Sin asignar'}
+                </p>
+                {participants.data.canPropose && (
+                  <div className="flex flex-wrap gap-2">
+                    <ActionLink primary to={`/proyectos/${id}/proponer-estudiante`}>
+                      Proponer estudiante
+                    </ActionLink>
+                    <ActionLink to={`/solicitudes-estudiantes?proyecto=${id}`}>
+                      Ver solicitudes
+                    </ActionLink>
+                  </div>
+                )}
+              </section>
+            )}
+          </WorkflowState>
           <WorkflowList>
             {[
               <article key="lead" className="p-5">
@@ -229,7 +273,7 @@ export function ProjectCollaboratorsPage() {
                   mutation.mutate({
                     id,
                     userId: String(values.get('user') ?? ''),
-                    responsibility: values.get('role') === 'student' ? 'student' : 'collaborator',
+                    responsibility: 'collaborator',
                   });
                 }}
               >
@@ -243,14 +287,8 @@ export function ProjectCollaboratorsPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Responsabilidad">
-                  <select name="role" className="input">
-                    <option value="collaborator">Colaboración</option>
-                    <option value="student">Estudiante</option>
-                  </select>
-                </Field>
                 <Button type="submit" disabled={mutation.isPending}>
-                  Guardar integrante
+                  Agregar colaborador
                 </Button>
                 <Feedback
                   error={mutation.error}

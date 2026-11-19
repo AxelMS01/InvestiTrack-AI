@@ -105,6 +105,9 @@ export const demoEvaluations = {
         !reviewer ||
         !can(reviewer, 'evaluation:create') ||
         reviewer.id === proposal.ownerId ||
+        proposal.details.team.some(
+          (item) => item.email.toLowerCase() === reviewer.email.toLowerCase(),
+        ) ||
         reviewer.id === user.id
       )
         fail(422, 'Selecciona un evaluador activo sin conflicto de interés.');
@@ -150,6 +153,11 @@ export const demoEvaluations = {
       );
       if (!evaluation) fail(404, 'Esta rúbrica no está asignada a tu cuenta.');
       const proposal = visibleProposal(data, user, evaluation.proposalId);
+      if (
+        proposal.ownerId === user.id ||
+        proposal.details.team.some((item) => item.email.toLowerCase() === user.email.toLowerCase())
+      )
+        fail(403, 'Existe un conflicto de interés con esta propuesta.');
       if (
         evaluation.status === 'submitted' ||
         evaluation.superseded ||
@@ -209,7 +217,7 @@ export const demoEvaluations = {
     };
   },
   decide(input: z.infer<typeof decisionSchema>) {
-    const user = requireDemoUser('proposal:review');
+    const user = requireDemoUser('proposal:decide');
     const parsed = decisionSchema.safeParse(input);
     if (!parsed.success || (input.status === 'changes_requested' && !input.allowedFields.length))
       fail(422, 'Indica el motivo y selecciona los campos que deben corregirse.');

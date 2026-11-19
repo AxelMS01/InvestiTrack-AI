@@ -34,7 +34,8 @@ class ProposalApiTests {
     String area="AREA_"+UUID.randomUUID().toString().substring(0,8);
     String criterionCode="MERIT_"+UUID.randomUUID().toString().substring(0,8);
 
-    @BeforeEach void catalog() {
+    @BeforeEach
+    public void catalog() {
         em.persist(new ResearchAreaEntity(area,"Engineering","Research area",owner));
         var criterion=new EvaluationCriterionEntity("Scientific merit","Merit",BigDecimal.ONE,new BigDecimal("5"),BigDecimal.ONE,LocalDate.now().minusDays(1),owner);
         criterion.setCode(criterionCode); em.persist(criterion); em.flush();
@@ -59,7 +60,7 @@ class ProposalApiTests {
 
     @Test void authenticationAndVisibilityAreEnforcedBeforePagination() throws Exception {
         mvc.perform(get("/api/v1/proposals")).andExpect(status().isUnauthorized());
-        var proposal=create(); String path="/api/v1/proposals/"+proposal.get("id").asText();
+        var proposal=create(); String path="/api/v1/proposals/"+proposal.get("id").stringValue();
         mvc.perform(get(path).with(as(UUID.randomUUID(),"RESEARCHER"))).andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/proposals").with(as(UUID.randomUUID(),"RESEARCHER"))).andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(0));
         mvc.perform(get("/api/v1/proposals").with(as(owner,"RESEARCHER"))).andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1));
@@ -71,7 +72,7 @@ class ProposalApiTests {
             .with(as(owner,"RESEARCHER"))).andExpect(status().isOk()).andExpect(jsonPath("$.page.hasMore").value(true))
             .andReturn().getResponse().getContentAsString());
         var second=json.readTree(mvc.perform(get("/api/v1/proposals").param("limit","1").param("sort","title").param("researchArea",area)
-            .param("cursor",first.get("page").get("nextCursor").asText()).with(as(owner,"RESEARCHER")))
+            .param("cursor",first.get("page").get("nextCursor").stringValue()).with(as(owner,"RESEARCHER")))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         assertNotEquals(first.get("items").get(0).get("id"),second.get("items").get(0).get("id"));
         mvc.perform(get("/api/v1/proposals").param("status","APPROVED").param("researcherId",owner.toString()).with(as(owner,"RESEARCHER")))
@@ -79,7 +80,7 @@ class ProposalApiTests {
     }
 
     @Test void updatesRequireCurrentVersionAndChildChangesAdvanceAggregateEtag() throws Exception {
-        String path="/api/v1/proposals/"+create().get("id").asText();
+        String path="/api/v1/proposals/"+create().get("id").stringValue();
         mvc.perform(patch(path).with(as(owner,"RESEARCHER")).contentType("application/json").content("{\"title\":\"Changed\"}"))
             .andExpect(status().isPreconditionRequired()).andExpect(jsonPath("$.code").value("IF_MATCH_REQUIRED"));
         String original=etag(path,owner,"RESEARCHER");
@@ -101,16 +102,16 @@ class ProposalApiTests {
             .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
     }
     @Test void draftCancellationAndDeletionRespectLifecycle() throws Exception {
-        String path="/api/v1/proposals/"+create().get("id").asText();
+        String path="/api/v1/proposals/"+create().get("id").stringValue();
         transition(path,"CANCELLED",owner,"RESEARCHER");
         mvc.perform(post(path+"/transitions").with(as(owner,"RESEARCHER")).header("If-Match",etag(path,owner,"RESEARCHER")).contentType("application/json").content("{\"targetStatus\":\"SUBMITTED\"}"))
             .andExpect(status().isConflict());
-        String draft="/api/v1/proposals/"+create().get("id").asText();
+        String draft="/api/v1/proposals/"+create().get("id").stringValue();
         mvc.perform(delete(draft).with(as(owner,"RESEARCHER")).header("If-Match",etag(draft,owner,"RESEARCHER"))).andExpect(status().isNoContent());
         mvc.perform(get(draft).with(as(owner,"RESEARCHER"))).andExpect(status().isNotFound());
     }
     @Test void resubmissionRequiresFreshEvaluationAssignments() throws Exception {
-        String path="/api/v1/proposals/"+create().get("id").asText();
+        String path="/api/v1/proposals/"+create().get("id").stringValue();
         transition(path,"SUBMITTED",owner,"RESEARCHER");
         String assignmentBody="{\"evaluatorId\":\""+evaluator+"\"}";
         mvc.perform(post(path+"/evaluator-assignments").with(as(coordinator,"COORDINATOR")).header("If-Match",etag(path,coordinator,"COORDINATOR"))
@@ -119,7 +120,7 @@ class ProposalApiTests {
         var evaluation=json.readTree(mvc.perform(post(path+"/evaluations").with(as(evaluator,"EVALUATOR")).contentType("application/json")
             .content("{\"criteria\":[{\"criterionCode\":\""+criterionCode+"\",\"score\":4}],\"decision\":\"REQUEST_CHANGES\"}"))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
-        String evaluationPath=path+"/evaluations/"+evaluation.get("id").asText();
+        String evaluationPath=path+"/evaluations/"+evaluation.get("id").stringValue();
         mvc.perform(post(evaluationPath+"/submission").with(as(evaluator,"EVALUATOR")).header("If-Match",etag(evaluationPath,evaluator,"EVALUATOR"))).andExpect(status().isOk());
         transition(path,"CHANGES_REQUESTED",coordinator,"COORDINATOR");
         transition(path,"SUBMITTED",owner,"RESEARCHER");
@@ -132,16 +133,16 @@ class ProposalApiTests {
     }
 
     @Test void evaluationWorkflowReleasesOnlySubmittedResultsAndPersistsApprovalSnapshot() throws Exception {
-        String path="/api/v1/proposals/"+create().get("id").asText();
+        String path="/api/v1/proposals/"+create().get("id").stringValue();
         transition(path,"SUBMITTED",owner,"RESEARCHER");
-        var assignment=json.readTree(mvc.perform(post(path+"/evaluator-assignments").with(as(coordinator,"COORDINATOR"))
+        mvc.perform(post(path+"/evaluator-assignments").with(as(coordinator,"COORDINATOR"))
             .header("If-Match",etag(path,coordinator,"COORDINATOR")).contentType("application/json").content("{\"evaluatorId\":\""+evaluator+"\"}"))
-            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+            .andExpect(status().isCreated());
         transition(path,"UNDER_REVIEW",coordinator,"COORDINATOR");
         String criteria="{\"criteria\":[{\"criterionCode\":\""+criterionCode+"\",\"score\":4}],\"decision\":\"APPROVE\"}";
         var evaluation=json.readTree(mvc.perform(post(path+"/evaluations").with(as(evaluator,"EVALUATOR")).contentType("application/json").content(criteria))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
-        String evaluationPath=path+"/evaluations/"+evaluation.get("id").asText();
+        String evaluationPath=path+"/evaluations/"+evaluation.get("id").stringValue();
         mvc.perform(get(evaluationPath).with(as(owner,"RESEARCHER"))).andExpect(status().isNotFound());
         mvc.perform(post(path+"/transitions").with(as(coordinator,"COORDINATOR")).header("If-Match",etag(path,coordinator,"COORDINATOR")).contentType("application/json").content("{\"targetStatus\":\"APPROVED\"}"))
             .andExpect(status().isConflict());
@@ -156,9 +157,9 @@ class ProposalApiTests {
         mvc.perform(get(internal+"/project-creation-data").with(as(owner,"RESEARCHER"))).andExpect(status().isForbidden());
         var service=jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("SCOPE_proposal:project-integration"));
         var snapshot=json.readTree(mvc.perform(get(internal+"/project-creation-data").with(service)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
-        String reference="{\"approvalId\":\""+snapshot.get("approvalId").asText()+"\",\"projectId\":\""+UUID.randomUUID()+"\"}";
+        String reference="{\"approvalId\":\""+snapshot.get("approvalId").stringValue()+"\",\"projectId\":\""+UUID.randomUUID()+"\"}";
         for(int i=0;i<2;i++) mvc.perform(put(internal+"/project-reference").with(service).contentType("application/json").content(reference)).andExpect(status().isNoContent());
-        mvc.perform(put(internal+"/project-reference").with(service).contentType("application/json").content(reference.replace(json.readTree(reference).get("projectId").asText(),UUID.randomUUID().toString()))).andExpect(status().isConflict());
+        mvc.perform(put(internal+"/project-reference").with(service).contentType("application/json").content(reference.replace(json.readTree(reference).get("projectId").stringValue(),UUID.randomUUID().toString()))).andExpect(status().isConflict());
         assertTrue(em.createQuery("select count(e) from OutboxEventEntity e",Long.class).getSingleResult()>0);
     }
 }

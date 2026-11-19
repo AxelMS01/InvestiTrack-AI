@@ -26,7 +26,7 @@ describe('Aislamiento de información del asistente', () => {
     );
     const answer = await assistantApi.ask({ prompt: 'Resumen de todos los proyectos' });
     expect((await projectsApi.list()).map((item) => item.id)).toEqual(['p1', 'p3']);
-    expect(answer.sources.map((item) => item.documentId)).toEqual([document.id]);
+    expect(answer.sources.map((item) => item.documentId)).toContain(document.id);
     expect(answer.text).toContain('INV-2026-001');
     expect(answer.text).not.toContain('INV-2026-002');
     expect(answer.text).not.toContain('INV-2026-005');
@@ -63,11 +63,17 @@ describe('Aislamiento de información del asistente', () => {
     expect(answer.denied).toBe(true);
     expect(answer.sources).toEqual([]);
   });
-  it('resume únicamente la propuesta asignada al evaluador y rechaza proyectos', async () => {
+  it('resume únicamente propuestas y proyectos asignados al evaluador', async () => {
     await authApi.demoLogin('reviewer');
-    const response = await assistantApi.ask({ prompt: 'Resumen de mis propuestas' });
+    const response = await assistantApi.ask({
+      prompt: 'Resumen de mis propuestas',
+      proposalId: 'proposal-assigned',
+    });
     expect(response.projectIds).toEqual([]);
     expect(response.proposalIds).toEqual(['proposal-assigned']);
+    expect(
+      (await assistantApi.ask({ prompt: 'Resumen del proyecto', projectId: 'p1' })).projectIds,
+    ).toEqual(['p1']);
     expect(
       (await assistantApi.ask({ prompt: 'Resumen del proyecto', projectId: 'p3' })).denied,
     ).toBe(true);

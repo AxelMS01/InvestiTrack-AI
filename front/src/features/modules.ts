@@ -1,3 +1,5 @@
+import { coordinationModule } from './coordination/module';
+import { evidencesModule } from './evidences/module';
 import { authModule } from './auth/module';
 import { dashboardModule } from './dashboard/module';
 import { proposalsModule } from './proposals/module';
@@ -18,6 +20,8 @@ export const modules: readonly ModuleDefinition[] = [
   evaluationsModule,
   projectsModule,
   activitiesModule,
+  evidencesModule,
+  coordinationModule,
   documentsModule,
   aiAssistantModule,
   reportsModule,

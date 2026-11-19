@@ -1,6 +1,7 @@
 import { Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AsyncState, PageHeading } from '../../components/ui';
+import { canCoordinateProject, projectEvaluation, projectUnit } from '../auth/access-policy';
 import { useAuth } from '../auth/auth-context';
 import { config } from '../../lib/config';
 import { can } from '../auth/model';
@@ -10,11 +11,12 @@ import { ProjectTable } from './project-table';
 
 export function ProjectsPage() {
   const query = useProjects();
-  const { user, workspace } = useAuth();
+  const { user, workspace, unitId } = useAuth();
   const [params, setParams] = useSearchParams();
   const search = params.get('q') ?? '';
   const status = params.get('estado') ?? '';
   const area = params.get('area') ?? '';
+  const unit = params.get('unidad') ?? unitId;
   function update(key: string, value: string) {
     setParams(
       (previous) => {
@@ -31,15 +33,17 @@ export function ProjectsPage() {
       (!config.demo ||
         !user ||
         (workspace === 'coordinator'
-          ? p.supervisorIds?.includes(user.id)
-          : workspace === 'student'
-            ? p.members?.some(
-                (member) => member.userId === user.id && member.responsibility === 'student',
-              )
-            : p.leadId === user.id ||
-              p.members?.some(
-                (member) => member.userId === user.id && member.responsibility === 'collaborator',
-              ))) &&
+          ? canCoordinateProject(user, p) && (!unit || unit === projectUnit(p))
+          : workspace === 'reviewer'
+            ? Boolean(projectEvaluation(user, p))
+            : workspace === 'student'
+              ? p.members?.some(
+                  (member) => member.userId === user.id && member.responsibility === 'student',
+                )
+              : p.leadId === user.id ||
+                p.members?.some(
+                  (member) => member.userId === user.id && member.responsibility === 'collaborator',
+                ))) &&
       (!status || p.status === status) &&
       (!area || p.area === area) &&
       `${p.title} ${p.code} ${p.lead}`
@@ -55,7 +59,7 @@ export function ProjectsPage() {
         action={
           config.demo &&
           user &&
-          workspace !== 'student' &&
+          (workspace === 'coordinator' || workspace === 'researcher') &&
           can(user, 'project:convert') && (
             <Link to="/proyectos/nuevo" className="btn-primary">
               <Plus size={17} />

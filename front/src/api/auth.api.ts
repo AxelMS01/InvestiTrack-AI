@@ -25,6 +25,13 @@ export function currentDemoUser(): User | null {
   );
 }
 
+export const demoProfiles = demoUsers.map((user, index) => ({
+  value: index < 5 ? user.role : user.id,
+  id: user.id,
+  name: user.name,
+  role: user.role,
+}));
+
 export const authApi = {
   me: async (): Promise<User | null> =>
     config.demo ? currentDemoUser() : request('/auth/me', userSchema.nullable()),
@@ -36,9 +43,9 @@ export const authApi = {
       body: JSON.stringify(credentialsSchema.parse(credentials)),
     });
   },
-  demoLogin: async (role: Role): Promise<User> => {
+  demoLogin: async (profileId: Role | string): Promise<User> => {
     if (!config.demo) throw new Error('El modo de demostración está desactivado.');
-    const profile = demoUsers.find((item) => item.role === role);
+    const profile = demoProfiles.find((item) => item.value === profileId);
     const user = readDatabase().users.find(
       (item) => item.id === profile?.id && item.status === 'ACTIVE',
     );
