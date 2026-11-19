@@ -3,7 +3,10 @@ import { entityIdSchema } from './shared';
 
 export const documentSchema = z.object({
   id: entityIdSchema,
-  projectId: entityIdSchema,
+  projectId: entityIdSchema.optional(),
+  proposalId: entityIdSchema.optional(),
+  activityId: entityIdSchema.optional(),
+  previousId: entityIdSchema.optional(),
   name: z.string().min(1),
   mimeType: z.string(),
   sizeBytes: z.number().int().nonnegative(),

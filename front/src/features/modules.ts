@@ -10,7 +10,7 @@ import { reportsModule } from './reports/module';
 import { adminModule } from './admin/module';
 import type { ModuleDefinition } from './module.types';
 
-// Architecture catalog only. Planned screens are deliberately not registered as routes.
+// El catálogo documenta el estado de cada pantalla. Los permisos se aplican en el router y el adaptador.
 export const modules: readonly ModuleDefinition[] = [
   authModule,
   dashboardModule,

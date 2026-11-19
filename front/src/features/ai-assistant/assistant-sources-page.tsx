@@ -11,7 +11,7 @@ export function AssistantSourcesPage() {
   return (
     <>
       <PageHeading
-        eyebrow="Pantalla 35 · Trazabilidad"
+        eyebrow="Asistente IA · Trazabilidad"
         title="Fuentes de la respuesta"
         description={query.data.question}
         action={

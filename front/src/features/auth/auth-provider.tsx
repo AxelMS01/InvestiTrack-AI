@@ -1,20 +1,41 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { config } from '../../lib/config';
+import { demoStorageKey } from '../../demo/database';
+import { invalidateWorkflowQueries } from '../../api/demo.queries';
 import { authApi } from '../../api/auth.api';
 import { sessionKey, useSession } from '../../api/auth.queries';
 import { AuthContext } from './auth-context';
-import type { Role } from '../../types';
+import { userRoles, type Role } from '../../types/user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient();
   const session = useSession();
+  useEffect(() => {
+    if (!config.demo) return;
+    function onStorage(event: StorageEvent) {
+      if (event.key !== demoStorageKey && event.key !== null) return;
+      void client
+        .invalidateQueries({ queryKey: sessionKey })
+        .then(() => invalidateWorkflowQueries(client));
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [client]);
+  const [selection, setSelection] = useState<{ id: string; role: Role }>();
+  const user = session.data ?? null;
+  const active =
+    user && selection?.id === user.id && userRoles(user).includes(selection.role)
+      ? selection.role
+      : user?.role;
   const switcher = useMutation({
     mutationFn: async (role: Role) => {
       if (!config.demo) throw new Error('El simulador solo está disponible en demostración.');
       await client.cancelQueries();
       const user = await authApi.demoLogin(role);
       client.removeQueries({ predicate: (query) => query.queryKey[0] !== 'session' });
+      client.getMutationCache().clear();
+      setSelection(undefined);
       client.setQueryData(sessionKey, user);
       return user;
     },
@@ -22,7 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user: session.data ?? null,
+        user,
+        workspace: active,
+        switchWorkspace: (role) => {
+          if (user && userRoles(user).includes(role)) setSelection({ id: user.id, role });
+        },
         loading: session.isPending,
         error: session.error,
         simulatorEnabled: config.demo,

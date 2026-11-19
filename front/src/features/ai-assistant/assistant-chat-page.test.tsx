@@ -7,11 +7,14 @@ vi.mock('../../lib/config', () => ({ config: { demo: true, apiUrl: '/api' } }));
 import { AuthProvider } from '../auth/auth-provider';
 import { authApi } from '../../api/auth.api';
 import { sessionKey } from '../../api/auth.queries';
+import { demoDocuments } from '../../demo/documents';
+import { pdf } from '../../test/workflow-fixtures';
 import { AssistantChatPage } from './assistant-chat-page';
 
 it('envía una consulta y permite desplegar su respaldo autorizado', async () => {
   localStorage.clear();
   const researcher = await authApi.demoLogin('researcher');
+  await demoDocuments.upload({ projectId: 'p1', category: 'other' }, pdf('mediciones.pdf'));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(sessionKey, researcher);
   const user = userEvent.setup();
@@ -28,7 +31,7 @@ it('envía una consulta y permite desplegar su respaldo autorizado', async () =>
   await user.type(screen.getByLabelText('Tu pregunta'), 'Resume el avance de mi departamento');
   await user.click(screen.getByRole('button', { name: 'Enviar pregunta' }));
   expect(await screen.findByText(/Respuesta simulada basada exclusivamente/)).toBeInTheDocument();
-  const summary = screen.getByText(/\[1\] Ficha institucional · INV-2026-001/);
+  const summary = screen.getByText(/\[1\] mediciones\.pdf/);
   const card = summary.closest('details');
   expect(card).not.toHaveAttribute('open');
   await user.click(summary);

@@ -1,13 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { expect, it, vi } from 'vitest';
 vi.mock('../../lib/config', () => ({ config: { demo: true, apiUrl: '/api' } }));
 import { AuthProvider } from '../auth/auth-provider';
 import { authApi } from '../../api/auth.api';
 import { sessionKey } from '../../api/auth.queries';
 import { proposalsApi } from '../../api/proposals.api';
+import { ProposalReviewPage } from './proposal-detail-page';
 import { ProposalCreatePage } from './proposal-create-page';
 
 it('valida el protocolo y la ética antes de registrar una propuesta completa', async () => {
@@ -19,16 +20,20 @@ it('valida el protocolo y la ética antes de registrar una propuesta completa', 
   render(
     <QueryClientProvider client={client}>
       <AuthProvider>
-        <MemoryRouter initialEntries={['/propuestas/nueva']}>
-          <Routes>
-            <Route path="/propuestas/nueva" element={<ProposalCreatePage />} />
-            <Route path="/propuestas/:id" element={<p>Propuesta registrada</p>} />
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider
+          router={createMemoryRouter(
+            [
+              { path: '/propuestas/nueva', element: <ProposalCreatePage /> },
+              { path: '/propuestas/:id/revision', element: <ProposalReviewPage /> },
+              { path: '/propuestas/:id', element: <p>Propuesta registrada</p> },
+            ],
+            { initialEntries: ['/propuestas/nueva'] },
+          )}
+        />
       </AuthProvider>
     </QueryClientProvider>,
   );
-  await user.click(screen.getByRole('button', { name: 'Enviar propuesta' }));
+  await user.click(screen.getByRole('button', { name: 'Revisar antes de enviar' }));
   expect(await screen.findByText('Escribe al menos 12 caracteres.')).toBeInTheDocument();
   const fill = (label: string, value: string) =>
     fireEvent.change(screen.getByLabelText(label), { target: { value } });
@@ -59,13 +64,20 @@ it('valida el protocolo y la ética antes de registrar una propuesta completa', 
       'Confirmo la integridad de los datos y la participación del equipo declarado.',
     ),
   );
-  await user.click(screen.getByRole('button', { name: 'Enviar propuesta' }));
+  await user.click(screen.getByRole('button', { name: 'Revisar antes de enviar' }));
   expect(
     await screen.findByText('Se requiere aprobación ética para estudios con participantes.'),
   ).toBeInTheDocument();
-  expect(await proposalsApi.list()).toEqual([]);
+  expect(
+    (await proposalsApi.list()).some(
+      (item) => item.title === 'Monitoreo del agua en comunidades rurales',
+    ),
+  ).toBe(false);
   await user.click(screen.getByLabelText('Cuento con aprobación del comité de ética.'));
-  await user.click(screen.getByRole('button', { name: 'Enviar propuesta' }));
+  await user.click(screen.getByRole('button', { name: 'Revisar antes de enviar' }));
+  expect(await screen.findByRole('heading', { name: 'Revisar propuesta' })).toBeInTheDocument();
+  expect((await proposalsApi.list())[0]?.status).toBe('draft');
+  await user.click(screen.getByRole('button', { name: 'Confirmar y enviar' }));
   expect(await screen.findByText('Propuesta registrada')).toBeInTheDocument();
   expect((await proposalsApi.list())[0]).toMatchObject({
     ownerId: 'u3',
@@ -73,6 +85,6 @@ it('valida el protocolo y la ética antes de registrar una propuesta completa', 
     status: 'submitted',
   });
   await authApi.demoLogin('reviewer');
-  await expect(proposalsApi.list()).rejects.toMatchObject({ status: 403 });
+  expect((await proposalsApi.list()).map((item) => item.id)).toEqual(['proposal-assigned']);
   client.clear();
 });

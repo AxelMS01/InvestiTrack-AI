@@ -21,3 +21,14 @@ export function initials(name: string) {
     .join('')
     .toUpperCase();
 }
+
+export function today() {
+  const date = new Date();
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
+
+export function addDays(days: number) {
+  const date = new Date(today() + 'T12:00:00Z');
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}

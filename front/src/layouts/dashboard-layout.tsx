@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, matchPath, useLocation } from 'react-router-dom';
+import { LogOut, X } from 'lucide-react';
+import { useLogout } from '../api/auth.queries';
+import { useAuth } from '../features/auth/auth-context';
+import { roleLabels } from '../features/auth/model';
 import {
-  ArrowUpRight,
-  BookOpen,
-  FolderKanban,
-  LayoutDashboard,
-  LogOut,
-  ShieldCheck,
-  X,
-  Sparkles,
-  FileText,
-} from 'lucide-react';
-import { useLogout, useSession } from '../api/auth.queries';
-import { can, roleLabels } from '../features/auth/model';
+  workspaceNavigation,
+  workspacePaths,
+  workspaceTitles,
+} from '../features/dashboard/navigation';
+import { modules } from '../features/modules';
+import { userRoles } from '../types/user';
+import { config } from '../lib/config';
 import { initials } from '../lib/format';
 import { Brand } from '../components/ui';
 import { InstitutionalHeader } from './institutional-header';
@@ -20,19 +19,25 @@ import { InstitutionalHeader } from './institutional-header';
 export function DashboardLayout() {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const { data: user } = useSession();
+  const { user, workspace } = useAuth();
   const logout = useLogout();
   const location = useLocation();
-  const section = location.pathname.startsWith('/asistente')
-    ? 'Asistente IA'
-    : location.pathname.startsWith('/propuestas')
-      ? 'Propuestas'
-      : location.pathname.startsWith('/proyectos')
-        ? 'Proyectos'
-        : location.pathname === '/usuarios'
-          ? 'Administración'
-          : 'Panel general';
   if (!user) return null;
+  const active =
+    userRoles(user).find((role) => workspacePaths[role] === location.pathname) ??
+    workspace ??
+    user.role;
+  const menu = workspaceNavigation(user, active);
+  const screens = modules.flatMap((module) => module.screens);
+  const route = screens
+    .filter((screen) => matchPath(screen.path, location.pathname))
+    .sort((a, b) => Number(a.path.includes(':')) - Number(b.path.includes(':')))[0];
+  const basePath = '/' + (location.pathname.split('/')[1] ?? '');
+  const group = screens.find((screen) => screen.path === basePath && basePath !== '/');
+  const section =
+    location.pathname === '/'
+      ? workspaceTitles[active]
+      : (route?.label ?? group?.label ?? 'Mi espacio');
   return (
     <div className="min-h-screen bg-canvas">
       <a href="#contenido" className="skip-link">
@@ -73,52 +78,34 @@ export function DashboardLayout() {
           <p className="mb-4 px-3 text-[10px] font-medium uppercase tracking-[0.18em] text-white/45">
             Principal
           </p>
-          <NavLink to="/" end className="nav-item" onClick={() => setOpen(false)}>
-            <LayoutDashboard size={18} />
-            Panel general
-          </NavLink>
-          <NavLink to="/proyectos" className="nav-item" onClick={() => setOpen(false)}>
-            <FolderKanban size={18} />
-            Proyectos
-          </NavLink>
-          {can(user.role, 'createProposal') && (
-            <NavLink to="/propuestas" className="nav-item" onClick={() => setOpen(false)}>
-              <FileText size={18} />
-              Propuestas
-            </NavLink>
-          )}
-          <NavLink to="/asistente" className="nav-item" onClick={() => setOpen(false)}>
-            <Sparkles size={18} />
-            Asistente IA
-          </NavLink>
-          {can(user.role, 'manageUsers') && (
-            <NavLink to="/usuarios" className="nav-item" onClick={() => setOpen(false)}>
-              <ShieldCheck size={18} />
-              Administración
-            </NavLink>
-          )}
+          {menu.map(({ href, label, icon: Icon }) => {
+            const [path, search] = href.split('?');
+            const activeItem =
+              (path === '/'
+                ? location.pathname === '/'
+                : location.pathname === path ||
+                  (!search && location.pathname.startsWith(path + '/'))) &&
+              (!search || location.search === '?' + search);
+            return (
+              <Link
+                key={href}
+                to={href}
+                aria-current={activeItem ? 'page' : undefined}
+                className={`nav-item${activeItem ? ' active' : ''}`}
+                onClick={() => setOpen(false)}
+              >
+                <Icon size={18} />
+                {label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="mt-auto px-5 pb-5">
-          <div className="rounded-xl border border-white/15 bg-white/5 p-4">
-            <BookOpen size={21} className="mb-3 text-lime-200" aria-hidden="true" />
-            <p className="text-sm font-medium">De la idea al impacto.</p>
-            <p className="mt-2 text-xs leading-5 text-white/60">
-              Conecta el conocimiento y da seguimiento a cada etapa de tu investigación.
-            </p>
-            <NavLink
-              to="/proyectos"
-              className="mt-3 inline-flex items-center gap-2 text-xs text-lime-200"
-              onClick={() => setOpen(false)}
-            >
-              Explorar proyectos
-              <ArrowUpRight size={14} />
-            </NavLink>
-          </div>
           <div className="mt-5 flex items-center gap-3 border-t border-white/10 pt-5">
             <span className="avatar bg-white/15 text-white">{initials(user.name)}</span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-medium">{user.name}</p>
-              <p className="mt-1 text-[11px] text-white/55">{roleLabels[user.role]}</p>
+              <p className="mt-1 text-[11px] text-white/55">{roleLabels[active]}</p>
             </div>
             <button
               aria-label="Cerrar sesión"
@@ -141,6 +128,7 @@ export function DashboardLayout() {
         <InstitutionalHeader
           user={user}
           section={section}
+          context={active}
           mobileOpen={open}
           collapsed={collapsed}
           onOpenMenu={() => setOpen(true)}
@@ -151,6 +139,34 @@ export function DashboardLayout() {
           tabIndex={-1}
           className="mx-auto max-w-[1500px] px-5 py-8 outline-none sm:px-9 sm:py-10"
         >
+          {config.demo && (
+            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 sm:hidden">
+              Demostración · datos simulados
+            </p>
+          )}
+          {location.pathname !== '/' && (
+            <nav
+              aria-label="Ruta de navegación"
+              className="mb-5 flex flex-wrap items-center gap-2 text-xs text-muted"
+            >
+              <Link className="hover:underline" to="/">
+                Inicio
+              </Link>
+              <span aria-hidden="true">/</span>
+              {group &&
+                group.path !== location.pathname &&
+                menu.some((entry) => entry.href.split('?')[0] === group.path) && (
+                  <>
+                    <Link className="hover:underline" to={group.path}>
+                      {group.label}
+                    </Link>
+                    <span aria-hidden="true">/</span>
+                  </>
+                )}
+              <span aria-current="page">{section}</span>
+              <span className="ml-auto sm:hidden">{roleLabels[active]}</span>
+            </nav>
+          )}
           <Outlet />
         </main>
         <footer className="mx-5 flex flex-wrap justify-between gap-2 border-t border-line py-6 text-[11px] text-muted sm:mx-9">

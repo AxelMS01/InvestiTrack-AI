@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
@@ -5,7 +6,8 @@ import { Send, Sparkles } from 'lucide-react';
 import { PageHeading, AsyncState } from '../../components/ui';
 import { Button } from '../../components/button';
 import { useAuth } from '../auth/auth-context';
-import { departmentLabels } from '../../types/department';
+import { can } from '../auth/model';
+import { useProposals } from '../../api/proposals.queries';
 import { useProjects } from '../../api/projects.queries';
 import { useAskAssistant, useAssistantHistory } from '../../api/assistant.queries';
 import { chatInputSchema, type ChatInput } from './model';
@@ -13,7 +15,9 @@ import { SourceCards } from './source-cards';
 
 export function AssistantChatPage() {
   const { user, simulatorEnabled } = useAuth();
-  const projects = useProjects();
+  const projects = useProjects(Boolean(user && can(user, 'project:read')));
+  const proposals = useProposals(Boolean(user && can(user, 'proposal:read')));
+  const [scope, setScope] = useState('');
   const history = useAssistantHistory();
   const ask = useAskAssistant();
   const {
@@ -36,7 +40,7 @@ export function AssistantChatPage() {
   return (
     <>
       <PageHeading
-        eyebrow="Pantalla 34 · Asistente de investigación"
+        eyebrow="Asistente de investigación"
         title="Tu asistente institucional"
         description="Consulta el estado de tus proyectos y revisa el respaldo de cada respuesta."
         action={
@@ -46,13 +50,8 @@ export function AssistantChatPage() {
         }
       />
       <div className="mb-6 rounded-xl border border-accent/20 bg-sage/60 p-4 text-xs leading-6">
-        <strong>Simulación con permisos activos.</strong>{' '}
-        {user?.role === 'admin'
-          ? 'Acceso institucional.'
-          : user?.role === 'reviewer'
-            ? 'Solo proyectos asignados para evaluación.'
-            : `Departamento: ${user?.departmentId ? departmentLabels[user.departmentId] : 'sin asignación; sin acceso a proyectos'}.`}{' '}
-        No se envían datos a servicios externos.
+        <strong>Simulación con permisos activos.</strong> Resume registros de investigación
+        autorizados y muestra archivos asociados.
       </div>
       <section className="panel p-5 sm:p-7">
         <div
@@ -70,7 +69,7 @@ export function AssistantChatPage() {
               <Sparkles className="mx-auto mb-4 text-accent" />
               <p className="font-medium">Comienza con una pregunta</p>
               <p className="mt-3 text-sm text-muted">
-                Por ejemplo: ¿Cuál es el avance de los proyectos de mi departamento?
+                Por ejemplo: ¿Cuál es el avance de mis proyectos autorizados?
               </p>
             </div>
           ) : (
@@ -84,7 +83,7 @@ export function AssistantChatPage() {
                   <p className="mb-2 text-xs font-semibold text-accent">
                     InvescticTrack IA · simulación
                   </p>
-                  <p className="whitespace-pre-wrap text-sm leading-7">{answer.text}</p>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-7">{answer.text}</p>
                   <div className="mt-5">
                     <SourceCards sources={answer.sources} />
                   </div>
@@ -99,11 +98,22 @@ export function AssistantChatPage() {
             ))
           )}
         </div>
+        {ask.isPending && (
+          <p role="status" className="mt-3 text-sm text-muted">
+            Consultando los registros autorizados…
+          </p>
+        )}
         <form
           noValidate
           className="mt-6 space-y-3 border-t border-line pt-5"
           onSubmit={handleSubmit(async (values) => {
-            const result = await ask.mutateAsync(values).catch(() => null);
+            const result = await ask
+              .mutateAsync({
+                ...values,
+                projectId: scope.startsWith('project:') ? scope.slice(8) : undefined,
+                proposalId: scope.startsWith('proposal:') ? scope.slice(9) : undefined,
+              })
+              .catch(() => null);
             if (result) resetField('prompt');
           })}
         >
@@ -113,16 +123,29 @@ export function AssistantChatPage() {
           <select
             id="chat-project"
             className="input"
-            {...register('projectId')}
-            disabled={projects.isPending || ask.isPending}
+            value={scope}
+            onChange={(event) => setScope(event.target.value)}
+            disabled={ask.isPending}
           >
-            <option value="">Todos mis proyectos autorizados</option>
+            <option value="">Todas mis investigaciones autorizadas</option>
             {projects.data?.map((project) => (
-              <option key={project.id} value={project.id}>
+              <option key={project.id} value={`project:${project.id}`}>
                 {project.code} · {project.title}
               </option>
             ))}
+            {proposals.data
+              ?.filter((item) => item.title)
+              .map((item) => (
+                <option key={item.id} value={`proposal:${item.id}`}>
+                  Propuesta · {item.title}
+                </option>
+              ))}
           </select>
+          {proposals.error && (
+            <p role="alert" className="field-error">
+              {proposals.error.message}
+            </p>
+          )}
           {projects.error && (
             <p role="alert" className="field-error">
               {projects.error.message}

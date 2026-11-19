@@ -12,6 +12,7 @@ export function useLogout() {
     onSuccess: async () => {
       await client.cancelQueries();
       client.removeQueries({ predicate: (query) => query.queryKey[0] !== 'session' });
+      client.getMutationCache().clear();
       client.setQueryData(sessionKey, null);
     },
   });

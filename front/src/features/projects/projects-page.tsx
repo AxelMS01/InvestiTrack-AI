@@ -1,7 +1,8 @@
 import { Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AsyncState, PageHeading } from '../../components/ui';
-import { useSession } from '../../api/auth.queries';
+import { useAuth } from '../auth/auth-context';
+import { config } from '../../lib/config';
 import { can } from '../auth/model';
 import { useProjects } from '../../api/projects.queries';
 import { areas, statusLabels, statusSchema } from '../../types/project';
@@ -9,7 +10,7 @@ import { ProjectTable } from './project-table';
 
 export function ProjectsPage() {
   const query = useProjects();
-  const { data: user } = useSession();
+  const { user, workspace } = useAuth();
   const [params, setParams] = useSearchParams();
   const search = params.get('q') ?? '';
   const status = params.get('estado') ?? '';
@@ -27,6 +28,18 @@ export function ProjectsPage() {
   }
   const filtered = (query.data ?? []).filter(
     (p) =>
+      (!config.demo ||
+        !user ||
+        (workspace === 'coordinator'
+          ? p.supervisorIds?.includes(user.id)
+          : workspace === 'student'
+            ? p.members?.some(
+                (member) => member.userId === user.id && member.responsibility === 'student',
+              )
+            : p.leadId === user.id ||
+              p.members?.some(
+                (member) => member.userId === user.id && member.responsibility === 'collaborator',
+              ))) &&
       (!status || p.status === status) &&
       (!area || p.area === area) &&
       `${p.title} ${p.code} ${p.lead}`
@@ -40,11 +53,13 @@ export function ProjectsPage() {
         title="Proyectos de investigación"
         description="Encuentra, consulta y da seguimiento a las iniciativas que construyen conocimiento."
         action={
+          config.demo &&
           user &&
-          can(user.role, 'createProject') && (
+          workspace !== 'student' &&
+          can(user, 'project:convert') && (
             <Link to="/proyectos/nuevo" className="btn-primary">
               <Plus size={17} />
-              Nuevo proyecto
+              Convertir propuesta
             </Link>
           )
         }

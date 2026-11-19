@@ -1,27 +1,29 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { projectsApi } from './projects.api';
+import { useWorkflowMutation } from './demo.queries';
+import { useSession } from './auth.queries';
+import { subjectKey } from '../features/auth/access-policy';
 
-export const projectKeys = {
-  all: ['projects'] as const,
-  detail: (id: string) => ['projects', id] as const,
-};
-export function useProjects() {
-  return useQuery({ queryKey: projectKeys.all, queryFn: ({ signal }) => projectsApi.list(signal) });
+function useScope() {
+  const { data: user } = useSession();
+  return user ? subjectKey(user) : 'anonymous';
+}
+export function useProjects(enabled = true) {
+  const scope = useScope();
+  return useQuery({
+    queryKey: ['projects', scope],
+    queryFn: ({ signal }) => projectsApi.list(signal),
+    enabled,
+  });
 }
 export function useProject(id: string) {
+  const scope = useScope();
   return useQuery({
-    queryKey: projectKeys.detail(id),
+    queryKey: ['projects', scope, id],
     queryFn: ({ signal }) => projectsApi.detail(id, signal),
     enabled: Boolean(id),
   });
 }
 export function useCreateProject() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: projectsApi.create,
-    onSuccess: async (project) => {
-      client.setQueryData(projectKeys.detail(project.id), project);
-      await client.invalidateQueries({ queryKey: projectKeys.all });
-    },
-  });
+  return useWorkflowMutation(projectsApi.create);
 }

@@ -4,9 +4,17 @@ import { AsyncState } from '../components/ui';
 import { useAuth } from '../features/auth/auth-context';
 import { Fragment } from 'react';
 import { subjectKey } from '../features/auth/access-policy';
+import { userRoles } from '../types/user';
+import { can, type Capability } from '../features/auth/model';
 import type { Role } from '../features/auth/model';
 
-export function RequireAuth({ roles }: { roles?: readonly Role[] }) {
+export function RequireAuth({
+  roles,
+  capability,
+}: {
+  roles?: readonly Role[];
+  capability?: Capability;
+}) {
   const auth = useAuth();
   const location = useLocation();
   if (auth.loading || auth.switching) return <AsyncState loading />;
@@ -18,7 +26,12 @@ export function RequireAuth({ roles }: { roles?: readonly Role[] }) {
   }
   if (!auth.user)
     return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
-  if (roles && !roles.includes(auth.user.role)) return <Navigate to="/sin-acceso" replace />;
+  if (
+    (auth.user.status && auth.user.status !== 'ACTIVE' && location.pathname !== '/sin-acceso') ||
+    (roles && !userRoles(auth.user).some((role) => roles.includes(role))) ||
+    (capability && !can(auth.user, capability))
+  )
+    return <Navigate to="/sin-acceso" replace />;
   return (
     <Fragment key={subjectKey(auth.user)}>
       <Outlet />

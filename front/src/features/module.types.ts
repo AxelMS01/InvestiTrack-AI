@@ -15,7 +15,7 @@ export interface ModuleScreen {
   id: string;
   label: string;
   path: string;
-  status: 'implemented' | 'planned';
+  status: 'INTEGRATED' | 'MOCK_COMPLETE' | 'UI_COMPLETE_BLOCKED' | 'PARTIAL' | 'PENDING';
   roles?: readonly Role[];
 }
 export interface ModuleDefinition {

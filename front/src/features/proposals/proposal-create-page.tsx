@@ -1,26 +1,45 @@
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from 'react-router-dom';
 import { Plus, Trash2, Send } from 'lucide-react';
-import { useCreateProposal } from '../../api/proposals.queries';
+import { useCreateProposal, useProposal } from '../../api/proposals.queries';
 import { Button } from '../../components/button';
 import { Input } from '../../components/input';
-import { PageHeading } from '../../components/ui';
+import { AsyncState, PageHeading } from '../../components/ui';
 import { currency } from '../../lib/format';
 import { areas } from '../../types/project';
 import { proposalInputSchema, type ProposalInput } from './schema';
+import { type RegisteredProposal } from '../../types/proposal';
+import { canEditProposal } from '../../demo/access';
+import { useAuth } from '../auth/auth-context';
+import { useCallback, useRef } from 'react';
 
 export function ProposalCreatePage() {
+  return <ProposalForm />;
+}
+export function ProposalEditPage() {
+  const { id = '' } = useParams();
+  const query = useProposal(id);
+  const { user } = useAuth();
+  if (query.isPending) return <AsyncState loading />;
+  if (query.error) return <AsyncState error={query.error} retry={() => void query.refetch()} />;
+  if (!user || !canEditProposal(user, query.data))
+    return <AsyncState error={new Error('Esta propuesta no se puede editar con tu cuenta.')} />;
+  return <ProposalForm key={query.data.id} proposal={query.data} />;
+}
+function ProposalForm({ proposal }: { proposal?: RegisteredProposal }) {
   const navigate = useNavigate();
   const create = useCreateProposal();
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    getValues,
+    reset,
+    formState: { errors, isDirty },
   } = useForm<ProposalInput>({
     resolver: zodResolver(proposalInputSchema),
-    defaultValues: {
+    defaultValues: proposal?.details ?? {
       title: '',
       abstract: '',
       objective: '',
@@ -36,6 +55,47 @@ export function ProposalCreatePage() {
       declaration: false,
     },
   });
+  const navigatesAfterSave = useRef(false);
+  const canEditField = (name: keyof ProposalInput) =>
+    proposal?.status !== 'changes_requested' || proposal.allowedFields.includes(name);
+  useBlocker(({ currentLocation, nextLocation }) => {
+    if (
+      !isDirty ||
+      navigatesAfterSave.current ||
+      currentLocation.pathname === nextLocation.pathname
+    )
+      return false;
+    return !window.confirm('¿Salir sin guardar los cambios?');
+  });
+  useBeforeUnload(
+    useCallback(
+      (event) => {
+        if (!isDirty || navigatesAfterSave.current) return;
+        event.preventDefault();
+        event.returnValue = '';
+      },
+      [isDirty],
+    ),
+  );
+  async function save(values: ProposalInput, review: boolean) {
+    const normalized = {
+      ...values,
+      requestedFunding: Number.isFinite(values.requestedFunding) ? values.requestedFunding : 0,
+      budgetItems: values.budgetItems.map((item) => ({
+        ...item,
+        amount: Number.isFinite(item.amount) ? item.amount : 0,
+      })),
+    };
+    const result = await create
+      .mutateAsync({ details: normalized, id: proposal?.id, version: proposal?.version })
+      .catch(() => null);
+    if (!result) return;
+    navigatesAfterSave.current = true;
+    reset(result.details);
+    void navigate(`/propuestas/${result.id}${review ? '/revision' : ''}`, {
+      state: { saved: true },
+    });
+  }
   const team = useFieldArray({ control, name: 'team' });
   const budget = useFieldArray({ control, name: 'budgetItems' });
   const amounts = useWatch({ control, name: 'budgetItems' });
@@ -59,15 +119,27 @@ export function ProposalCreatePage() {
     <>
       <PageHeading
         eyebrow="Propuestas · Registro científico"
-        title="Crear propuesta"
-        description="Define el protocolo, equipo, presupuesto y requisitos éticos. Todos los campos son obligatorios salvo la aprobación ética cuando no participan personas."
+        title={proposal ? 'Editar propuesta' : 'Crear propuesta'}
+        description="Guarda tus avances como borrador y revisa el protocolo antes de enviarlo a coordinación."
       />
+      {proposal?.status === 'changes_requested' && (
+        <p className="panel mb-5 p-4 text-sm">
+          {
+            proposal.history
+              .slice()
+              .reverse()
+              .find((event) => event.status === 'changes_requested')?.note
+          }
+        </p>
+      )}
+      {isDirty && (
+        <p role="status" className="mb-3 text-sm text-muted">
+          Tienes cambios sin guardar.
+        </p>
+      )}
       <form
         noValidate
-        onSubmit={handleSubmit(async (values) => {
-          const result = await create.mutateAsync(values).catch(() => null);
-          if (result) void navigate(`/propuestas/${result.id}`);
-        })}
+        onSubmit={(event) => void handleSubmit((values) => save(values, true))(event)}
         className="space-y-6"
       >
         <fieldset disabled={create.isPending} className="panel space-y-6 p-6">
@@ -78,6 +150,7 @@ export function ProposalCreatePage() {
             </label>
             <Input
               id="proposal-title"
+              readOnly={!canEditField('title')}
               {...register('title')}
               {...field('proposal-title', Boolean(errors.title))}
             />
@@ -87,7 +160,12 @@ export function ProposalCreatePage() {
             <label htmlFor="proposal-area" className="field-label">
               Línea de investigación
             </label>
-            <select id="proposal-area" className="input" {...register('area')}>
+            <select
+              id="proposal-area"
+              className="input"
+              {...register('area')}
+              disabled={!canEditField('area')}
+            >
               {areas.map((area) => (
                 <option key={area}>{area}</option>
               ))}
@@ -109,6 +187,7 @@ export function ProposalCreatePage() {
                 rows={name === 'objective' ? 3 : 4}
                 className="input"
                 {...register(name)}
+                readOnly={!canEditField(name)}
                 {...field(name, Boolean(errors[name]))}
               />
               {error(name, errors[name]?.message)}
@@ -124,6 +203,7 @@ export function ProposalCreatePage() {
                   id={name}
                   type="date"
                   {...register(name)}
+                  readOnly={!canEditField(name)}
                   {...field(name, Boolean(errors[name]))}
                 />
                 {error(name, errors[name]?.message)}
@@ -131,7 +211,10 @@ export function ProposalCreatePage() {
             ))}
           </div>
         </fieldset>
-        <fieldset disabled={create.isPending} className="panel space-y-5 p-6">
+        <fieldset
+          disabled={create.isPending || !canEditField('team')}
+          className="panel space-y-5 p-6"
+        >
           <legend className="px-2 text-sm font-semibold">2. Equipo colaborador</legend>
           <p className="text-xs leading-6 text-muted">
             El responsable se asigna desde tu sesión. Agrega entre 1 y 10 colaboradores con correos
@@ -202,6 +285,7 @@ export function ProposalCreatePage() {
                 <Input
                   id={`concept-${index}`}
                   {...register(`budgetItems.${index}.concept`)}
+                  readOnly={!canEditField('budgetItems')}
                   {...field(`concept-${index}`, Boolean(errors.budgetItems?.[index]?.concept))}
                 />
                 {error(`concept-${index}`, errors.budgetItems?.[index]?.concept?.message)}
@@ -214,6 +298,7 @@ export function ProposalCreatePage() {
                   id={`category-${index}`}
                   className="input"
                   {...register(`budgetItems.${index}.category`)}
+                  disabled={!canEditField('budgetItems')}
                 >
                   <option value="personnel">Personal</option>
                   <option value="equipment">Equipo</option>
@@ -231,6 +316,7 @@ export function ProposalCreatePage() {
                   step="0.01"
                   min="0.01"
                   {...register(`budgetItems.${index}.amount`, { valueAsNumber: true })}
+                  readOnly={!canEditField('budgetItems')}
                   {...field(`amount-${index}`, Boolean(errors.budgetItems?.[index]?.amount))}
                 />
                 {error(`amount-${index}`, errors.budgetItems?.[index]?.amount?.message)}
@@ -239,7 +325,7 @@ export function ProposalCreatePage() {
                 variant="secondary"
                 className="sm:mt-6"
                 aria-label={`Eliminar partida ${index + 1}`}
-                disabled={budget.fields.length === 1}
+                disabled={!canEditField('budgetItems') || budget.fields.length === 1}
                 onClick={() => budget.remove(index)}
               >
                 <Trash2 size={15} />
@@ -250,7 +336,7 @@ export function ProposalCreatePage() {
           <Button
             variant="secondary"
             onClick={() => budget.append({ concept: '', category: 'materials', amount: 0 })}
-            disabled={budget.fields.length >= 20}
+            disabled={!canEditField('budgetItems') || budget.fields.length >= 20}
           >
             <Plus size={15} />
             Agregar partida
@@ -268,6 +354,7 @@ export function ProposalCreatePage() {
               min="0.01"
               step="0.01"
               {...register('requestedFunding', { valueAsNumber: true })}
+              readOnly={!canEditField('requestedFunding')}
               {...field('requestedFunding', Boolean(errors.requestedFunding))}
             />
             {error('requestedFunding', errors.requestedFunding?.message)}
@@ -283,6 +370,7 @@ export function ProposalCreatePage() {
               type="checkbox"
               className="mt-1 accent-accent"
               {...register('involvesParticipants')}
+              disabled={!canEditField('involvesParticipants')}
             />
             La investigación involucra participantes humanos.
           </label>
@@ -294,6 +382,7 @@ export function ProposalCreatePage() {
                   type="checkbox"
                   className="mt-1 accent-accent"
                   {...register('ethicsApproval')}
+                  disabled={!canEditField('ethicsApproval')}
                   {...field('ethicsApproval', Boolean(errors.ethicsApproval))}
                 />
                 Cuento con aprobación del comité de ética.
@@ -308,6 +397,7 @@ export function ProposalCreatePage() {
                 type="checkbox"
                 className="mt-1 accent-accent"
                 {...register('declaration')}
+                disabled={!canEditField('declaration')}
                 {...field('declaration', Boolean(errors.declaration))}
               />
               Confirmo la integridad de los datos y la participación del equipo declarado.
@@ -325,13 +415,23 @@ export function ProposalCreatePage() {
             Revisa los campos señalados antes de enviar la propuesta.
           </p>
         )}
-        <div className="flex justify-end gap-3">
-          <Link className="btn-secondary" to="/propuestas">
+        <div className="flex flex-wrap justify-end gap-3">
+          <Link
+            className="btn-secondary"
+            to={proposal ? `/propuestas/${proposal.id}` : '/propuestas'}
+          >
             Cancelar
           </Link>
+          <Button
+            variant="secondary"
+            disabled={create.isPending}
+            onClick={() => void save(getValues(), false)}
+          >
+            Guardar borrador
+          </Button>
           <Button type="submit" disabled={create.isPending}>
             <Send size={16} />
-            {create.isPending ? 'Enviando…' : 'Enviar propuesta'}
+            {create.isPending ? 'Guardando…' : 'Revisar antes de enviar'}
           </Button>
         </div>
       </form>

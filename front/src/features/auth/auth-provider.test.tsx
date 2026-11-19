@@ -32,10 +32,10 @@ it('revalida rutas y descarta caché del administrador al alternar al investigad
     </QueryClientProvider>,
   );
   expect(await screen.findByText('Administración protegida')).toBeInTheDocument();
-  await user.selectOptions(screen.getByLabelText('Rol institucional activo'), 'researcher');
+  await user.selectOptions(screen.getByLabelText('Simulador de perfiles'), 'researcher');
   expect(await screen.findByText('Acceso denegado por rol')).toBeInTheDocument();
   expect(screen.queryByText('Administración protegida')).not.toBeInTheDocument();
   expect(client.getQueryData(['confidential'])).toBeUndefined();
-  expect(screen.getByLabelText('Rol institucional activo')).toHaveValue('researcher');
+  expect(screen.getByLabelText('Simulador de perfiles')).toHaveValue('researcher');
   client.clear();
 });

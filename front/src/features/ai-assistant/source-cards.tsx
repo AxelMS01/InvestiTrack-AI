@@ -7,8 +7,7 @@ export function SourceCards({ sources }: { sources: AssistantSource[] }) {
     <section aria-label="Fuentes y documentos de respaldo">
       <h2 className="section-title mb-4">Fuentes y documentos de respaldo</h2>
       <p className="mb-4 text-xs leading-6 text-muted">
-        Referencias de demostración verificadas contra las fichas autorizadas al generar la
-        respuesta. No representan documentos científicos externos.
+        Archivos registrados en el repositorio de demostración y accesibles desde tu cuenta.
       </p>
       {!sources.length && <p className="text-sm text-muted">Esta respuesta no utilizó fuentes.</p>}
       <div className="space-y-3">
@@ -23,14 +22,14 @@ export function SourceCards({ sources }: { sources: AssistantSource[] }) {
             </summary>
             <div className="border-t border-line p-4">
               <p className="text-xs text-muted">
-                Instantánea de demostración · versión {source.version}
+                Archivo del repositorio · versión {source.version}
               </p>
               <p className="mt-3 text-sm leading-7">{source.excerpt}</p>
               <Link
-                to={`/proyectos/${source.projectId}`}
+                to={`/documentos/${source.documentId}`}
                 className="mt-4 inline-block text-xs font-medium text-accent"
               >
-                Consultar ficha del proyecto →
+                Abrir documento →
               </Link>
             </div>
           </details>

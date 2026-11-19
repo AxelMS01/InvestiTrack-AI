@@ -7,8 +7,10 @@ export const activitySchema = z.object({
   title: z.string().min(1),
   description: z.string(),
   assigneeId: entityIdSchema,
+  assignedBy: entityIdSchema.optional(),
+  milestoneId: entityIdSchema.optional(),
   dueDate: dateSchema,
-  status: z.enum(['pending', 'in_progress', 'completed', 'blocked']),
+  status: z.enum(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']),
   isMilestone: z.boolean(),
 });
 export type Activity = z.infer<typeof activitySchema>;

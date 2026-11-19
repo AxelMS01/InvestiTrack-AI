@@ -22,7 +22,7 @@ export const projectInputSchema = z
       .string()
       .trim()
       .min(8, 'Escribe un título de al menos 8 caracteres.')
-      .max(160, 'Máximo 160 caracteres.'),
+      .max(180, 'Máximo 180 caracteres.'),
     description: z
       .string()
       .trim()
@@ -42,6 +42,11 @@ export const projectInputSchema = z
     path: ['endDate'],
   });
 export type ProjectInput = z.infer<typeof projectInputSchema>;
+export const projectMemberSchema = z.object({
+  userId: z.string(),
+  name: z.string().optional(),
+  responsibility: z.enum(['collaborator', 'student']),
+});
 export const projectSchema = z.object({
   departmentId: departmentSchema.optional(),
   id: z.string(),
@@ -56,5 +61,12 @@ export const projectSchema = z.object({
   progress: z.number().min(0).max(100),
   lead: z.string(),
   leadId: z.string(),
+  proposalId: z.string().optional(),
+  supervisorIds: z.array(z.string()).optional(),
+  members: z.array(projectMemberSchema).optional(),
+  finalReport: z
+    .object({ documentId: z.string(), submittedAt: z.iso.datetime().optional() })
+    .optional(),
+  closedAt: z.iso.datetime().optional(),
 });
 export type Project = z.infer<typeof projectSchema>;

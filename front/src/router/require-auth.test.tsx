@@ -21,7 +21,7 @@ function renderRoute(user: User | null | ApiError, pathname = '/usuarios') {
             <Route path="/login" element={<p>Acceso de sesión</p>} />
             <Route path="/sesion-expirada" element={<p>Sesión expirada</p>} />
             <Route path="/sin-acceso" element={<p>Acceso denegado</p>} />
-            <Route element={<RequireAuth roles={permissions.manageUsers} />}>
+            <Route element={<RequireAuth roles={permissions['user:read']} />}>
               <Route path="/usuarios" element={<p>Directorio administrativo</p>} />
             </Route>
           </Routes>

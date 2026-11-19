@@ -8,6 +8,8 @@ export interface AuthContextValue {
   simulatorEnabled: boolean;
   switching: boolean;
   switchError: Error | null;
+  workspace?: Role;
+  switchWorkspace?: (role: Role) => void;
   switchRole: (role: Role) => void;
   retry: () => void;
 }

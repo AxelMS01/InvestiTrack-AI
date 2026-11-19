@@ -1,117 +1,53 @@
 # InvescticTrack · Frontend
 
-Base institucional en React 19, TypeScript estricto, Vite, Tailwind CSS 4, React Router 7 (API declarativa de rutas compatible con v6), React Hook Form, Zod y TanStack Query 5. Interfaz en español, adaptable a móviles y escritorio.
+Interfaz institucional en español con React 19, TypeScript, React Router, TanStack Query, React Hook Form, Zod, Vite y Tailwind CSS.
 
 ## Desarrollo
 
-Requiere Node.js 22.12+ (o una versión LTS posterior compatible).
+Requiere Node.js 22.12 o posterior. Desde la raíz del repositorio:
 
 ```powershell
 cd front
-npm install
+npm ci
 Copy-Item .env.example .env
 npm run dev
 ```
 
-Abre la dirección indicada por Vite. Con `.env.example`, el modo de demostración permite elegir un rol en el login sin credenciales reales. La sesión vive en memoria y se cierra al recargar; los proyectos ficticios se guardan en `localStorage` bajo `invesctictrack.demo.projects.v1`. Eliminar esa clave restablece los datos iniciales. No almacenes información institucional real en este modo.
+Si las dependencias ya están instaladas, basta con levantar Vite. Copia `.env.example` cuando necesites crear la configuración local. Abre la dirección que imprime Vite.
+
+`.env.example` habilita la demostración. En el login selecciona uno de los cinco perfiles. El **Simulador de perfiles** cambia la cuenta ficticia y limpia su caché privada. En el perfil de Elena, **Espacio de trabajo** alterna investigación y evaluación dentro de la misma cuenta. Volver a cargar la pestaña cierra la sesión demo.
+
+## Recorrido de demostración
+
+1. Entra como **Investigador**. Crea una propuesta, guarda un borrador, complétalo y confirma el envío desde la revisión. Desde un borrador puedes adjuntar el protocolo.
+2. Cambia a **Coordinador**. Abre **Propuestas recibidas**, asigna la propuesta a Daniel y configura una fecha límite.
+3. Cambia a **Evaluador**. Abre la rúbrica desde **Evaluaciones pendientes**, califica los criterios, guarda un borrador si deseas volver después y envía la evaluación. El catálogo inicial incluye una asignación disponible para practicar.
+4. Vuelve a **Coordinador**. Consulta los resultados. Registra una decisión, por ejemplo aprobar. Si solicitas modificaciones, selecciona los campos que podrá cambiar el investigador.
+5. Convierte la propuesta aprobada desde **Proyectos supervisados → Convertir propuesta**. Como investigador responsable, abre el proyecto, agrega a Sofía como estudiante y crea un hito y una actividad asociada. Usa fechas dentro del periodo aprobado.
+6. Entra como **Estudiante**. Abre **Mis actividades**, entrega una evidencia y actualiza el estado de la tarea. Los archivos autorizados se pueden consultar y descargar desde el detalle.
+7. Como **Investigador**, abre **Informe final**, carga un PDF y confirma su presentación. Como **Coordinador** asignado, abre **Reportes y cierre** y confirma el cierre cuando el trabajo esté resuelto.
+8. Como **Administrador**, usa **Usuarios**, **Asignación de roles** y **Auditoría** para probar la administración de accesos.
+9. Desde **Asistente IA**, consulta el estado de un proyecto o propuesta autorizados. Si el recurso tiene archivos, el chat permite abrirlos desde sus referencias de catálogo.
+
+La demostración guarda sus registros en `invesctictrack.demo.workspace.v2` y sus archivos en la base IndexedDB `invesctictrack.demo.files`. El historial de chat vive en memoria. Para reiniciar datos ficticios usa los controles de almacenamiento del navegador sobre el origen local. Las claves antiguas de proyectos y propuestas se importan al iniciar una demostración sin estado nuevo.
+
+## Comprobaciones
 
 ```powershell
 npm run typecheck
 npm run lint
-npm test
+npm run format:check
+npm run test
 npm run build
-npm run preview
 ```
 
-## Organización
-
-```text
-src/
-  app/                   # QueryClient y configuración de la aplicación
-  components/            # Button, Input, Modal, Table, Badge, Card y estados UI
-  layouts/               # DashboardLayout, AuthLayout, InstitutionalHeader
-  router/                # Rutas públicas/protegidas, guard, errores y pruebas
-  types/                 # User, Project, Proposal, Evaluation, Activity, Document
-  api/                   # Cliente HTTP, APIs tipadas y hooks de TanStack Query
-  features/
-    auth/                # Login, 401, 403 y permisos
-    dashboard/           # Panel general y catálogo de vistas por perfil
-    proposals/           # Lista, crear, detalle, editar e historial
-    evaluations/         # Pendientes, asignar, rúbrica, resultados y decisión
-    projects/            # Catálogo, registro, detalle y catálogo de seguimiento
-    activities/          # Lista, crear/editar, detalle, hitos y calendario
-    documents/           # Repositorio, subir, detalle, evidencias y versiones
-    ai-assistant/        # Chat, fuentes verificadas e historial
-    reports/             # Indicadores, exportación, informe, publicaciones y cierre
-    admin/               # Usuarios, roles, auditoría y configuración
-  lib/                   # Variables de entorno y formatos es-MX
-  test/                  # Configuración de pruebas
-```
-
-Los esquemas Zod son la fuente del tipado del dominio. Los componentes consumen hooks de consultas/mutaciones; las funciones de API encapsulan el transporte y validan las respuestas en tiempo de ejecución. Los indicadores se calculan a partir de los proyectos recibidos, sin métricas simuladas independientes. Las páginas se cargan bajo demanda.
-
-Cada módulo contiene un `module.ts` con sus vistas y el estado `implemented` o `planned`. El catálogo se reúne en `features/modules.ts`; únicamente las pantallas implementadas tienen rutas activas. Los módulos pendientes cuentan con estructura y contratos según su estado documentado, no con flujos terminados. Consulta [ARCHITECTURE.md](./ARCHITECTURE.md) para responsabilidades, convenciones y extensión.
-
-## Rutas y permisos iniciales
-
-| Ruta               | Acceso                                                   |
-| ------------------ | -------------------------------------------------------- |
-| `/sesion-expirada` | Público: página 401 tras expirar la sesión               |
-| `/login`           | Público                                                  |
-| `/`                | Cualquier sesión: panel general                          |
-| `/proyectos`       | Cualquier sesión: catálogo con búsqueda y filtros en URL |
-| `/proyectos/:id`   | Cualquier sesión: ficha del proyecto                     |
-| `/proyectos/nuevo` | Administración, coordinación e investigación             |
-| `/usuarios`        | Administración: consulta de directorio                   |
-| `/sin-acceso`      | Cualquier sesión                                         |
-
-El simulador global `AuthContext` permite alternar entre Investigador, Coordinador, Evaluador y Administrador desde el header en modo demo. Los permisos de acciones están centralizados en `features/auth/model.ts` y el alcance de proyectos en `features/auth/access-policy.ts`. Investigador y coordinador consultan proyectos de su departamento; el evaluador consulta proyectos asignados; administración tiene acceso institucional. Registros sin departamento no son visibles mediante la política departamental. La navegación y los guards se actualizan al cambiar de perfil y se descarta la caché de recursos del perfil anterior. En producción, el selector está deshabilitado y el backend debe aplicar las mismas políticas.
-
-## Probar los nuevos flujos
-
-1. Inicia la demostración y usa **Rol institucional activo** en el header para cambiar de perfil.
-2. Abre **Asistente IA** (`/asistente`, pantalla 34). El investigador de ejemplo pertenece a Ciencias ambientales y puede consultar `INV-2026-001` y `INV-2026-005`. El coordinador pertenece a Salud; el evaluador tiene asignado `INV-2026-003`. Administración puede consultar todo el portafolio.
-3. Selecciona un proyecto o consulta el ámbito autorizado. Cada respuesta muestra tarjetas desplegables con extractos de respaldo y enlaces a la ficha. `/asistente/respuestas/:id/fuentes` corresponde a la pantalla 35 y `/asistente/historial` a la 36. Las URLs e historial se verifican de nuevo con el perfil activo. No se comparten conversaciones entre perfiles.
-4. Como investigador, coordinador o administrador, entra a **Propuestas → Crear propuesta** (`/propuestas/nueva`). El formulario incluye protocolo, equipo dinámico, presupuesto por partidas, financiamiento, fechas e integridad ética. Valida correos únicos, límite total de un millón de MXN, financiamiento menor o igual al desglose, importes a dos decimales y aprobación ética si participan personas. Tras enviarlo puedes consultar la ficha registrada.
-
-El chat es una simulación determinista con fuentes ficticias del propio portafolio, sin conexión a un modelo ni consultas externas. Sus referencias son instantáneas de fichas autorizadas, no publicaciones científicas verificadas. Conserva las últimas 50 respuestas por perfil en memoria hasta recargar. Las propuestas de demostración se conservan en `localStorage` bajo `invesctictrack.demo.proposals.v1`.
-
-Los proyectos antiguos guardados sin `departmentId` permanecen visibles para administración y se ocultan a los perfiles departamentales. Para recuperar las semillas demo con departamentos, elimina únicamente la clave de proyectos `invesctictrack.demo.projects.v1` del navegador; esto también descarta los proyectos demo guardados en esa clave.
-
-## Conectar el backend
-
-Configura `.env` y reinicia Vite:
+## Modo institucional
 
 ```dotenv
 VITE_DEMO_MODE=false
 VITE_API_URL=/api
 ```
 
-Sin `VITE_DEMO_MODE=true` la aplicación utiliza la API real. Las variables `VITE_*` son públicas: nunca contienen secretos. El repositorio no incluye todavía backend funcional; los siguientes contratos son la propuesta de integración, no endpoints implementados por este frontend.
+Este ajuste habilita el transporte histórico del cliente para consultas y sesión por cookie. El servidor con controladores REST, identidad institucional y autorización de recursos es un requisito para el modo institucional. Las nuevas operaciones muestran su estado de integración pendiente. Las rutas directas requieren una regla de fallback a `index.html` al desplegar archivos estáticos.
 
-| Método | Endpoint         | Respuesta JSON                                        |
-| ------ | ---------------- | ----------------------------------------------------- |
-| GET    | `/auth/me`       | `User`, `null` o HTTP 401 sin sesión                  |
-| POST   | `/auth/login`    | `User`; recibe `{ email, password }`                  |
-| POST   | `/auth/logout`   | HTTP 204 sin cuerpo                                   |
-| GET    | `/projects`      | `Project[]` visibles para la sesión                   |
-| GET    | `/projects/:id`  | `Project` o HTTP 404                                  |
-| POST   | `/projects`      | `Project` creado; recibe `ProjectInput`               |
-| GET    | `/users`         | `User[]`; solo administración                         |
-| GET    | `/proposals`     | Propuestas autorizadas con `details` y `departmentId` |
-| GET    | `/proposals/:id` | Propuesta autorizada o HTTP 404                       |
-| POST   | `/proposals`     | Propuesta creada; recibe `ProposalInput`              |
-
-Se esperan objetos y listas directos, sin envoltorio `data`. Consulta los esquemas en `types/user.ts` y `types/project.ts` para los campos exactos y enumeraciones. Fechas: `YYYY-MM-DD`; moneda: MXN; avance: 0–100. El backend asigna ID, código, responsable, estado inicial y avance a partir de la sesión, sin confiar en valores enviados por el cliente.
-
-El cliente usa `fetch` con `credentials: 'include'`, pensado para sesiones por cookie HttpOnly, Secure y SameSite. En producción, el servidor debe comprobar autenticación, permisos por rol y alcance de cada registro, además de aplicar protección CSRF (validación de Origin y política de cookies adecuada; si exige token CSRF, añadir el encabezado en `api/http-client.ts`). La protección del router solo controla la interfaz. Para orígenes distintos, configura CORS con origen explícito y credenciales. Un proxy de desarrollo o reverse proxy debe dirigir `/api` al backend.
-
-Para desplegar, publica `dist/` con una regla de fallback a `index.html` para las rutas del frontend, excluyendo `/api`. El modo demo es exclusivamente para exploración; no representa autenticación de producción.
-
-## Componentes y calidad
-
-Incluye menú lateral adaptable, cabecera, indicadores, distribución por área, fechas de cierre, tabla de proyectos, búsqueda y filtros, ficha, formulario validado, selector de perfiles demo, directorio, estados de carga/error/vacío y recuperación de errores. Controles con etiquetas, errores asociados, foco visible, enlace para saltar al contenido y respeto a movimiento reducido. Las tablas permiten desplazamiento horizontal en pantallas pequeñas.
-
-Pruebas: acceso anónimo y por rol a rutas, validación de fechas/presupuesto/textos, y flujo de creación/persistencia/consulta en modo demo. La evaluación de proyectos, edición, adjuntos, auditoría, paginación del servidor y administración de altas/bajas quedan como módulos futuros, no controles simulados.
-
-Referencias de integración: [Tailwind con Vite](https://tailwindcss.com/docs/installation/using-vite) y [consultas de TanStack Query](https://tanstack.com/query/latest/docs/framework/react/guides/queries).
+Consulta [la matriz y los contratos pendientes](../docs/frontend-progress.md) y [la arquitectura del frontend](./ARCHITECTURE.md).

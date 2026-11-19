@@ -12,8 +12,10 @@ describe('Catálogo de arquitectura y rutas', () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
   for (const module of modules) {
-    for (const screen of module.screens.filter((view) => view.status === 'implemented')) {
-      it(`registra la pantalla implementada ${module.id}/${screen.id}`, () => {
+    for (const screen of module.screens.filter((view) =>
+      ['INTEGRATED', 'MOCK_COMPLETE'].includes(view.status),
+    )) {
+      it(`registra la pantalla operativa ${module.id}/${screen.id}`, () => {
         const matches = matchRoutes(
           [...publicRoutes, ...protectedRoutes],
           screen.path.replaceAll(':id', 'example-id'),

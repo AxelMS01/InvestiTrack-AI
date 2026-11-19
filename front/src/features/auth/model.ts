@@ -1,7 +1,7 @@
 import { z } from 'zod';
-
-import type { Role } from '../../types/user';
+import { userRoles, type Role, type User } from '../../types/user';
 export { roleSchema, userSchema, type Role, type User } from '../../types/user';
+
 export const credentialsSchema = z.object({
   email: z.email('Ingresa un correo válido.'),
   password: z.string().min(1, 'Ingresa tu contraseña.').max(128),
@@ -12,12 +12,52 @@ export const roleLabels: Record<Role, string> = {
   coordinator: 'Coordinador',
   researcher: 'Investigador',
   reviewer: 'Evaluador',
+  student: 'Estudiante',
 };
+const academic = ['coordinator', 'researcher'] as const;
+const projectReaders = [...academic, 'student'] as const;
 export const permissions = {
-  createProject: ['admin', 'coordinator', 'researcher'],
-  manageUsers: ['admin'],
-  createProposal: ['admin', 'coordinator', 'researcher'],
-} satisfies Record<string, Role[]>;
-export function can(role: Role, permission: keyof typeof permissions) {
-  return (permissions[permission] as readonly Role[]).includes(role);
+  'proposal:read': [...academic, 'reviewer'],
+  'proposal:create': ['researcher'],
+  'proposal:update': ['researcher'],
+  'proposal:submit': ['researcher'],
+  'proposal:review': ['coordinator'],
+  'evaluation:read': ['coordinator', 'reviewer'],
+  'evaluation:assign': ['coordinator'],
+  'evaluation:create': ['reviewer'],
+  'evaluation:submit': ['reviewer'],
+  'project:read': projectReaders,
+  'project:convert': academic,
+  'project:update': ['researcher'],
+  'project:manage-members': ['researcher'],
+  'project:manage-activities': ['researcher'],
+  'project:close': ['coordinator'],
+  'activity:read': projectReaders,
+  'activity:create': ['researcher'],
+  'activity:update': ['researcher', 'student'],
+  'activity:assign': ['researcher'],
+  'document:read': [...projectReaders, 'reviewer'],
+  'document:upload': ['researcher', 'student'],
+  'document:download': [...projectReaders, 'reviewer'],
+  'document:delete': ['researcher', 'student'],
+  'report:read': academic,
+  'report:export': ['coordinator'],
+  'user:read': ['admin'],
+  'user:create': ['admin'],
+  'user:update': ['admin'],
+  'user:deactivate': ['admin'],
+  'role:assign': ['admin'],
+  'audit:read': ['admin'],
+  'ai:ask': [...projectReaders, 'reviewer'],
+} as const satisfies Record<string, readonly Role[]>;
+
+export type Capability = keyof typeof permissions;
+export function can(user: User | Role, capability: Capability) {
+  const allowed: readonly Role[] = permissions[capability];
+  if (typeof user === 'string') return allowed.includes(user);
+  return (
+    (!user.status || user.status === 'ACTIVE') &&
+    (!user.capabilities || user.capabilities.includes(capability)) &&
+    userRoles(user).some((role) => allowed.includes(role))
+  );
 }

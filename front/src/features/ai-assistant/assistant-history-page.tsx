@@ -7,7 +7,7 @@ export function AssistantHistoryPage() {
   return (
     <>
       <PageHeading
-        eyebrow="Pantalla 36 · Conversaciones"
+        eyebrow="Asistente IA · Conversaciones"
         title="Historial del asistente"
         description="Consultas del perfil activo. El historial de demostración permanece solo durante esta sesión del navegador."
         action={

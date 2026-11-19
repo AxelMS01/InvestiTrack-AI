@@ -4,13 +4,8 @@ export const authModule = {
   id: 'auth',
   label: 'Autenticación',
   screens: [
-    { id: 'login', label: 'Login', path: '/login', status: 'implemented' },
-    { id: 'forbidden', label: '403 · Acceso denegado', path: '/sin-acceso', status: 'implemented' },
-    {
-      id: 'expired',
-      label: '401 · Sesión expirada',
-      path: '/sesion-expirada',
-      status: 'implemented',
-    },
+    { id: 'login', label: 'Iniciar sesión', path: '/login', status: 'MOCK_COMPLETE' },
+    { id: 'forbidden', label: 'Acceso denegado', path: '/sin-acceso', status: 'MOCK_COMPLETE' },
+    { id: 'expired', label: 'Sesión expirada', path: '/sesion-expirada', status: 'MOCK_COMPLETE' },
   ],
 } as const satisfies ModuleDefinition;

@@ -16,6 +16,7 @@ export function SessionExpiredPage() {
         className="btn-primary"
         onClick={() => {
           client.removeQueries({ predicate: (query) => query.queryKey[0] !== 'session' });
+          client.getMutationCache().clear();
           client.setQueryData(sessionKey, null);
         }}
       >
