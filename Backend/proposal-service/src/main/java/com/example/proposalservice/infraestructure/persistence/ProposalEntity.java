@@ -156,4 +156,9 @@ public class ProposalEntity {
     protected void onUpdate() {
         updatedAt = Instant.now();
     }
+    /** Marks child-only changes so the aggregate ETag changes in the same flush. */
+    public void markChanged(UUID actorUserId) {
+        updatedBy = actorUserId;
+        updatedAt = Instant.now();
+    }
 }
