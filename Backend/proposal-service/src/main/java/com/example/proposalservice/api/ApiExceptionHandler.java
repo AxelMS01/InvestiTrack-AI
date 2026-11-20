@@ -23,6 +23,8 @@ public class ApiExceptionHandler {
     ResponseEntity<ProblemDetail> stale(Exception e, HttpServletRequest r) { return problem(412,"STALE_VERSION","The resource changed. Fetch the current ETag.",r); }
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ProblemDetail> conflict(Exception e, HttpServletRequest r) { return problem(409,"RESOURCE_CONFLICT","The operation conflicts with an existing record.",r); }
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    ResponseEntity<ProblemDetail> storage(Exception e,HttpServletRequest r){return problem(503,"STORAGE_UNAVAILABLE","Proposal storage is temporarily unavailable.",r);}
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ProblemDetail> validation(MethodArgumentNotValidException e, HttpServletRequest r) {
         var response=problem(422,"VALIDATION_FAILED","Request violates field validation.",r);
@@ -31,14 +33,14 @@ public class ApiExceptionHandler {
         return response;
     }
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
-        MissingServletRequestParameterException.class, IllegalArgumentException.class, ConstraintViolationException.class})
+        MissingServletRequestParameterException.class, IllegalArgumentException.class, java.time.DateTimeException.class, ConstraintViolationException.class})
     ResponseEntity<ProblemDetail> malformed(Exception e, HttpServletRequest r) { return problem(400,"INVALID_REQUEST","Malformed request or invalid parameter.",r); }
-    private ResponseEntity<ProblemDetail> problem(int status,String code,String detail,HttpServletRequest r) {
+    public static ResponseEntity<ProblemDetail> problem(int status,String code,String detail,HttpServletRequest r) {
         var p=ProblemDetail.forStatusAndDetail(org.springframework.http.HttpStatusCode.valueOf(status),detail);
         p.setTitle(code.replace('_',' ')); p.setType(URI.create("urn:proposal-service:problem:"+code.toLowerCase().replace('_','-')));
         p.setInstance(URI.create(r.getRequestURI())); p.setProperty("code",code);
-        String correlation=r.getHeader("X-Correlation-ID");
+        String correlation=(String)r.getAttribute("correlationId");
         p.setProperty("correlationId",correlation==null?UUID.randomUUID().toString():correlation);
-        return ResponseEntity.status(status).body(p);
+        return ResponseEntity.status(status).contentType(org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON).body(p);
     }
 }

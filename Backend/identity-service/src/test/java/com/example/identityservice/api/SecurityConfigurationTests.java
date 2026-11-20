@@ -26,7 +26,7 @@ class SecurityConfigurationTests {
         respond("/issuer/.well-known/openid-configuration","{\"issuer\":\""+issuer+"\",\"jwks_uri\":\""+issuer+"/jwks\",\"authorization_endpoint\":\""+issuer+"/authorize\",\"response_types_supported\":[\"code\"],\"subject_types_supported\":[\"public\"],\"id_token_signing_alg_values_supported\":[\"RS256\"]}");
         respond("/issuer/jwks",new JWKSet(key.toPublicJWK()).toString());
         server.start();
-        decoder=new SecurityConfiguration().jwtDecoder(issuer,"research-platform-api","identity-service");
+        decoder=new SecurityConfiguration().jwtDecoder(issuer,"research-platform-api","identity-service", "");
     }
     void respond(String path,String content) {
         server.createContext(path,exchange->{
@@ -42,6 +42,13 @@ class SecurityConfigurationTests {
             .issueTime(Date.from(Instant.now().minusSeconds(600))).expirationTime(Date.from(expires)).build();
         var jwt=new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("test-key").build(),claims);
         jwt.sign(new RSASSASigner(signer)); return jwt.serialize();
+    }
+    @Test void supportsInternalJwksWithPublicIssuer() throws Exception {
+        String publicIssuer="http://localhost:8180/realms/investitrack";
+        var internalDecoder=new SecurityConfiguration().jwtDecoder(publicIssuer,"research-platform-api","identity-service",issuer+"/jwks");
+        assertThat(internalDecoder.decode(token(publicIssuer,"research-platform-api",Instant.now().plusSeconds(300),key)).getIssuer().toString()).isEqualTo(publicIssuer);
+        var wrongIssuer=token(issuer,"research-platform-api",Instant.now().plusSeconds(300),key);
+        assertThatThrownBy(()->internalDecoder.decode(wrongIssuer)).isInstanceOf(JwtException.class);
     }
     @Test void validatesSignatureIssuerLifetimeAndBothConfiguredAudiences() throws Exception {
         assertThat(decoder.decode(token(issuer,"research-platform-api",Instant.now().plusSeconds(300),key)).getSubject()).isEqualTo("institutional|user");

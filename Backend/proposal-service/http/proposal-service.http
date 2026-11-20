@@ -1,12 +1,13 @@
 # Open this file in IntelliJ's HTTP Client. Run requests individually from top to bottom.
 # Replace the token placeholders with access tokens from your configured OIDC provider.
 # Do not commit real tokens. You can instead put these variables in http-client.private.env.json.
-# Tokens need issuer/audience validation, signed user_id UUID, and roles as described in ../README.md.
-@baseUrl = http://localhost:8081
+# Tokens need issuer/audience validation, a mapped active Identity profile, and roles as described in ../README.md.
+@baseUrl = http://localhost:8082
 @researcherToken = REPLACE_WITH_RESEARCHER_ACCESS_TOKEN
 @coordinatorToken = REPLACE_WITH_COORDINATOR_ACCESS_TOKEN
 @evaluatorToken = REPLACE_WITH_EVALUATOR_ACCESS_TOKEN
-# Must equal user_id in evaluatorToken and differ from the proposal owner's user_id.
+# Evaluator application UUID from Identity; must differ from the proposal owner.
+@coordinatorId = REPLACE_WITH_COORDINATOR_APPLICATION_UUID
 @evaluatorUserId = 22222222-2222-4222-8222-222222222222
 
 ### 1. Liveness: no authentication needed. Expected: 200, status UP.
@@ -198,7 +199,15 @@ Authorization: Bearer {{coordinatorToken}}
 Content-Type: application/json
 If-Match: {{proposalEtag}}
 
-{"targetStatus": "APPROVED", "reason": "Evaluation policy satisfied."}
+{
+  "targetStatus": "APPROVED",
+  "reason": "Evaluation policy satisfied.",
+  "creationPlan": {
+    "coordinatorId": "{{coordinatorId}}",
+    "startDate": "2026-12-01",
+    "plannedEndDate": "2027-12-01"
+  }
+}
 
 > {%
 if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));

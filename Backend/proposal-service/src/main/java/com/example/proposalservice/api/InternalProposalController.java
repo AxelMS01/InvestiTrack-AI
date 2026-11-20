@@ -11,9 +11,11 @@ import java.util.*;
 @RequestMapping("/internal/v1/proposals/{proposalId}")
 public class InternalProposalController {
     private final ProposalApplicationService service;
-    public InternalProposalController(ProposalApplicationService service) { this.service=service; }
+    public InternalProposalController(ProposalApplicationService service){this.service=service;}
     @GetMapping("/project-creation-data")
-    public Map<String,Object> snapshot(@PathVariable UUID proposalId) { return service.approved(proposalId); }
+    public Map<String,Object> snapshot(@PathVariable UUID proposalId,@RequestParam(required=false) UUID approvalId){return service.approved(proposalId,approvalId);}
     @PutMapping("/project-reference")
-    public ResponseEntity<Void> reference(@PathVariable UUID proposalId,@Valid @RequestBody ProjectReference input) { service.projectReference(proposalId,input); return ResponseEntity.noContent().build(); }
+    public ResponseEntity<Void> reference(@PathVariable UUID proposalId,@Valid @RequestBody ProjectReference input){service.projectReference(proposalId,input);return ResponseEntity.noContent().build();}
+    @GetMapping("/access-context")
+    public Map<String,Object> context(@PathVariable UUID proposalId,@RequestParam UUID subjectId){return service.accessContext(proposalId,subjectId);}
 }

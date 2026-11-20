@@ -22,8 +22,10 @@ public class SecurityConfiguration {
     @Bean
     JwtDecoder jwtDecoder(@Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuer,
         @Value("${identity.security.audience}") String audience,
-        @Value("${identity.security.internal-audience}") String internalAudience) {
-        var decoder=JwtDecoders.<NimbusJwtDecoder>fromIssuerLocation(issuer);
+        @Value("${identity.security.internal-audience}") String internalAudience,
+        @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}") String jwkSetUri) {
+        var decoder=jwkSetUri.isBlank() ? JwtDecoders.<NimbusJwtDecoder>fromIssuerLocation(issuer)
+            : NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
         OAuth2TokenValidator<Jwt> audiences=jwt -> jwt.getAudience()!=null && jwt.getAudience().stream().anyMatch(a -> a.equals(audience)||a.equals(internalAudience))
             ? OAuth2TokenValidatorResult.success():OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token","Token audience is not accepted",null));
         OAuth2TokenValidator<Jwt> requiredClaims=jwt -> jwt.getSubject()!=null && !jwt.getSubject().isBlank() && jwt.getExpiresAt()!=null
