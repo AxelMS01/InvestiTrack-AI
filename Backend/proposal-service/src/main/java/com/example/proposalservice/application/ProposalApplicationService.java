@@ -59,7 +59,7 @@ public class ProposalApplicationService {
     private void owner(ProposalEntity p,Caller c) { require(p.getOwnerUserId().equals(c.id()),403,"FORBIDDEN","Proposal owner is required."); }
     private void editable(ProposalEntity p) { require(p.getStatus()==ProposalStatus.DRAFT || p.getStatus()==ProposalStatus.CHANGES_REQUESTED,409,"PROPOSAL_NOT_EDITABLE","Proposal is not editable in its current status."); }
     public static void match(String header,Long version) {
-        require(header!=null,428,"IF_MATCH_REQUIRED","Supply the current ETag in If-Match.");
+        if(header==null) throw new ApiException(428,"IF_MATCH_REQUIRED","Supply the current ETag in If-Match.");
         require(header.matches("\"[0-9]+\""),400,"INVALID_ETAG","If-Match must contain one quoted version.");
         require(header.equals("\""+version+"\""),412,"STALE_VERSION","The resource version is stale.");
     }
@@ -170,20 +170,20 @@ public class ProposalApplicationService {
     }
     private static void unique(List<?> values) { require(new HashSet<>(values).size()==values.size(),422,"DUPLICATE_VALUES","Lists cannot contain duplicate values."); }
     public Map<String,Object> proposalView(ProposalEntity p) {
-        var objectives=children(ProposalObjectiveEntity.class,"proposal",p.getId()).stream().sorted(Comparator.comparing(ProposalObjectiveEntity::getDisplayOrder))
+        var objectives=children(ProposalObjectiveEntity.class,"proposal",p.getId()).stream().sorted(Comparator.comparing(o->o.getDisplayOrder()))
             .map(o->fields("type",o.getObjectiveType(),"description",o.getDescription())).toList();
         var result=fields("id",p.getId(),"title",p.getTitle(),"abstract",p.getAbstractText(),"researchProblem",p.getResearchProblem(),
             "methodology",p.getMethodology(),"expectedResults",p.getExpectedResults(),"researchAreaCode",p.getResearchArea()==null?null:p.getResearchArea().getCode(),
             "estimatedDurationMonths",p.getEstimatedDurationMonths(),"status",p.getStatus(),"ownerUserId",p.getOwnerUserId(),
             "objectives",objectives,"researcherIds",researchers(p).stream().map(r->r.getId().getUserId()).toList(),
-            "supportingDocumentIds",children(ProposalDocumentReferenceEntity.class,"proposal",p.getId()).stream().map(ProposalDocumentReferenceEntity::getDocumentId).toList(),
+            "supportingDocumentIds",children(ProposalDocumentReferenceEntity.class,"proposal",p.getId()).stream().map(r->r.getDocumentId()).toList(),
             "submittedAt",p.getSubmittedAt(),"createdAt",p.getCreatedAt(),"updatedAt",p.getUpdatedAt(),"accessVersion",p.getAccessVersion(),"version",p.getVersion());
         var approval=em.find(ApiRecord.class,"approval:"+p.getId());
         if(approval!=null){var snapshot=read(approval.getPayload());result.put("approvalId",snapshot.get("approvalId"));result.put("creationPlan",snapshot.get("creationPlan"));}
         var reference=em.find(ApiRecord.class,"project:"+p.getId());result.put("projectId",reference==null?null:reference.getPayload());return result;
     }
     public void delete(UUID id,Caller c,String etag) {
-        var p=em.find(ProposalEntity.class,id,LockModeType.PESSIMISTIC_WRITE);require(p!=null,404,"NOT_FOUND","Proposal was not found."); require(p.getOwnerUserId().equals(c.id()) || c.administrator(),403,"FORBIDDEN","Owner or administrator is required.");
+        var p=em.find(ProposalEntity.class,id,LockModeType.PESSIMISTIC_WRITE);if(p==null) throw new ApiException(404,"NOT_FOUND","Proposal was not found."); require(p.getOwnerUserId().equals(c.id()) || c.administrator(),403,"FORBIDDEN","Owner or administrator is required.");
         match(etag,p.getVersion()); require(p.getStatus()==ProposalStatus.DRAFT,409,"DRAFT_REQUIRED","Only drafts may be deleted.");
         // Keep an audit tombstone and outbox record; delete only the draft aggregate data.
         event("Proposal",id,"ProposalDeleted",c,fields("proposalId",id));
@@ -220,7 +220,7 @@ public class ProposalApplicationService {
             var decision=new ProposalDecisionEntity(p,ProposalDecision.valueOf(to.name()),Instant.now(),c.id()); decision.setRationale(input.reason()); em.persist(decision); em.flush();
             if(to==ProposalStatus.APPROVED) {
                 require(input.creationPlan()!=null,422,"CREATION_PLAN_REQUIRED","Approval requires coordinatorId and plannedEndDate in creationPlan.");
-                var plan=input.creationPlan();require(plan.coordinatorId()!=null&&plan.plannedEndDate()!=null&&(plan.startDate()==null||!plan.plannedEndDate().isBefore(plan.startDate())),422,"INVALID_CREATION_PLAN","Project dates are invalid.");
+                var plan=input.creationPlan();require(plan.startDate()==null||!plan.plannedEndDate().isBefore(plan.startDate()),422,"INVALID_CREATION_PLAN","Project dates are invalid.");
                 identity.active(plan.coordinatorId(),"COORDINATOR");
                 for(var researcher:researchers(p))identity.active(researcher.getId().getUserId(),null);
             }
@@ -255,15 +255,15 @@ public class ProposalApplicationService {
     }
     public Map<String,Object> saveResearcher(UUID id,UUID user,ResearcherInput input,Caller c,String etag,boolean create) {
         var p=locked(id,c); owner(p,c); editable(p); match(etag,p.getVersion());
-        UUID userId=create?input.userId():user; require(userId!=null,422,"USER_REQUIRED","userId is required.");
+        UUID userId=create?input.userId():user; if(userId==null) throw new ApiException(422,"USER_REQUIRED","userId is required.");
         require(children(EvaluatorAssignmentEntity.class,"proposal",id).stream().noneMatch(a->a.getEvaluatorUserId().equals(userId) && a.getStatus()!=EvaluatorAssignmentStatus.REVOKED && a.getStatus()!=EvaluatorAssignmentStatus.DECLINED),409,"EVALUATOR_CONFLICT","An assigned evaluator cannot become a proposal researcher.");
         if(create)identity.active(userId,null);
         require(input.proposalRole()==null||Set.of("PRINCIPAL","PRINCIPAL_RESEARCHER","RESEARCHER","STUDENT","COLLABORATOR").contains(input.proposalRole()),422,"INVALID_ROLE","Unsupported proposal role.");
         require(!userId.equals(p.getOwnerUserId())||input.proposalRole()==null||Set.of("PRINCIPAL","PRINCIPAL_RESEARCHER").contains(input.proposalRole()),409,"OWNER_ROLE_PROTECTED","The owner's principal role is protected.");
         require(userId.equals(p.getOwnerUserId())||input.proposalRole()==null||!Set.of("PRINCIPAL","PRINCIPAL_RESEARCHER").contains(input.proposalRole()),409,"PRINCIPAL_EXISTS","The proposal owner is the principal researcher.");
         var key=new ProposalResearcherId(id,userId); var r=em.find(ProposalResearcherEntity.class,key);
-        if(create) { require(r==null,409,"RESEARCHER_EXISTS","Researcher is already a collaborator."); r=new ProposalResearcherEntity(p,userId,input.proposalRole()==null?"RESEARCHER":input.proposalRole(),Instant.now(),c.id()); em.persist(r); }
-        else { require(r!=null,404,"NOT_FOUND","Researcher was not found."); if(input.proposalRole()!=null) r.setProposalRole(input.proposalRole()); }
+        if(create) { if(r!=null) throw new ApiException(409,"RESEARCHER_EXISTS","Researcher is already a collaborator."); r=new ProposalResearcherEntity(p,userId,input.proposalRole()==null?"RESEARCHER":input.proposalRole(),Instant.now(),c.id()); em.persist(r); }
+        else { if(r==null) throw new ApiException(404,"NOT_FOUND","Researcher was not found."); if(input.proposalRole()!=null) r.setProposalRole(input.proposalRole()); }
         require(!r.getProposalRole().isBlank(),422,"INVALID_ROLE","Proposal role cannot be blank.");
         r.setResponsibility(input.responsibility()); touch(p,c); em.flush(); var result=researcherView(r); event("Proposal",id,"ProposalResearcherChanged",c,result); result.put("version",p.getVersion()); return result;
     }
@@ -340,7 +340,7 @@ public class ProposalApplicationService {
     private void applyEvaluation(EvaluationEntity e,EvaluationInput input,Caller c) {
         if(input.observations()!=null) e.setObservations(input.observations()); if(input.recommendations()!=null) e.setRecommendations(input.recommendations()); if(input.decision()!=null) e.setDecision(input.decision());
         if(input.criteria()!=null) {
-            unique(input.criteria().stream().map(Score::criterionCode).toList());
+            unique(input.criteria().stream().map(score->score.criterionCode()).toList());
             children(EvaluationScoreEntity.class,"evaluation",e.getId()).forEach(em::remove); em.flush(); BigDecimal total=BigDecimal.ZERO;
             for(var score:input.criteria()) {
                 var criterion=criterion(score.criterionCode()); require(active(criterion),422,"INACTIVE_CRITERION","Criterion is not active.");
@@ -391,7 +391,7 @@ public class ProposalApplicationService {
         require(snapshot.get("creationPlan") instanceof Map<?,?>&&snapshot.get("principalResearcherId")!=null&&snapshot.get("collaborators") instanceof List<?>,409,"LEGACY_APPROVAL_SNAPSHOT","This legacy approval requires an explicitly reviewed creation plan before Project can consume it.");return snapshot;
     }
     public void projectReference(UUID id,ProjectReference input) {
-        var proposal=em.find(ProposalEntity.class,id,LockModeType.PESSIMISTIC_WRITE);require(proposal!=null,404,"NOT_FOUND","Proposal was not found.");
+        var proposal=em.find(ProposalEntity.class,id,LockModeType.PESSIMISTIC_WRITE);if(proposal==null) throw new ApiException(404,"NOT_FOUND","Proposal was not found.");
         var snapshot=approved(id); require(snapshot.get("approvalId").toString().equals(input.approvalId().toString()),409,"APPROVAL_MISMATCH","Approval does not match the approved snapshot.");
         em.lock(find(ProposalEntity.class,id),LockModeType.PESSIMISTIC_WRITE);
         var existing=em.find(ApiRecord.class,"project:"+id);
