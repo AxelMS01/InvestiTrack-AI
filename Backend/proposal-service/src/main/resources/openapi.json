@@ -1,0 +1,2981 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "InvestiTrack Proposal and Evaluation",
+    "version": "1.0.0",
+    "description": "Proposal drafts, review rounds, evaluator assignments, immutable evaluations, approved project plans, and internal owner/messaging contracts. Collections return items/page; mutable resources return quoted numeric ETags. Approval requires creationPlan."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/proposals": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_proposals",
+        "summary": "GET /api/v1/proposals",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/ProposalStatus"
+              }
+            },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "researchArea",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "researcherId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "evaluatorId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "submittedFrom",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "submittedTo",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "post_api_v1_proposals",
+        "summary": "POST /api/v1/proposals",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_proposals_proposalId",
+        "summary": "GET /api/v1/proposals/{proposalId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "patch_api_v1_proposals_proposalId",
+        "summary": "PATCH /api/v1/proposals/{proposalId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "delete_api_v1_proposals_proposalId",
+        "summary": "DELETE /api/v1/proposals/{proposalId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/history": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_proposals_proposalId_history",
+        "summary": "GET /api/v1/proposals/{proposalId}/history",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/transitions": {
+      "post": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "post_api_v1_proposals_proposalId_transitions",
+        "summary": "POST /api/v1/proposals/{proposalId}/transitions",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Transition"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/researchers": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_proposals_proposalId_researchers",
+        "summary": "GET /api/v1/proposals/{proposalId}/researchers",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "post_api_v1_proposals_proposalId_researchers",
+        "summary": "POST /api/v1/proposals/{proposalId}/researchers",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearcherInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/researchers/{userId}": {
+      "patch": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "patch_api_v1_proposals_proposalId_researchers_userId",
+        "summary": "PATCH /api/v1/proposals/{proposalId}/researchers/{userId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearcherInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "delete_api_v1_proposals_proposalId_researchers_userId",
+        "summary": "DELETE /api/v1/proposals/{proposalId}/researchers/{userId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/evaluator-assignments": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_proposals_proposalId_evaluator_assignments",
+        "summary": "GET /api/v1/proposals/{proposalId}/evaluator-assignments",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "post_api_v1_proposals_proposalId_evaluator_assignments",
+        "summary": "POST /api/v1/proposals/{proposalId}/evaluator-assignments",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_proposals_proposalId_evaluator_assignments_assignmentId",
+        "summary": "GET /api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "patch_api_v1_proposals_proposalId_evaluator_assignments_assignmentId",
+        "summary": "PATCH /api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "delete_api_v1_proposals_proposalId_evaluator_assignments_assignmentId",
+        "summary": "DELETE /api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/evaluations": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_proposals_proposalId_evaluations",
+        "summary": "GET /api/v1/proposals/{proposalId}/evaluations",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "post_api_v1_proposals_proposalId_evaluations",
+        "summary": "POST /api/v1/proposals/{proposalId}/evaluations",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/evaluations/{evaluationId}": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_proposals_proposalId_evaluations_evaluationId",
+        "summary": "GET /api/v1/proposals/{proposalId}/evaluations/{evaluationId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "evaluationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "patch_api_v1_proposals_proposalId_evaluations_evaluationId",
+        "summary": "PATCH /api/v1/proposals/{proposalId}/evaluations/{evaluationId}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "evaluationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/evaluations/{evaluationId}/submission": {
+      "post": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "post_api_v1_proposals_proposalId_evaluations_evaluationId_submission",
+        "summary": "POST /api/v1/proposals/{proposalId}/evaluations/{evaluationId}/submission",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "evaluationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/evaluations/{evaluationId}/release": {
+      "post": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "post_api_v1_proposals_proposalId_evaluations_evaluationId_release",
+        "summary": "POST /api/v1/proposals/{proposalId}/evaluations/{evaluationId}/release",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "evaluationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One quoted numeric ETag. Creates use the parent ETag; updates use the resource ETag."
+          }
+        ]
+      }
+    },
+    "/api/v1/proposals/{proposalId}/evaluations/{evaluationId}/history": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_proposals_proposalId_evaluations_evaluationId_history",
+        "summary": "GET /api/v1/proposals/{proposalId}/evaluations/{evaluationId}/history",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "evaluationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/v1/proposals/{proposalId}/project-creation-data": {
+      "get": {
+        "tags": [
+          "internal"
+        ],
+        "operationId": "get_internal_v1_proposals_proposalId_project_creation_data",
+        "summary": "GET /internal/v1/proposals/{proposalId}/project-creation-data",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "approvalId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Pins an immutable approval; omitted only for the Project manual-command compatibility lookup."
+          }
+        ],
+        "description": "Workload token with proposal-service audience, client_id matching sub, allowlisted client, and the route-specific scope. Projection endpoints require reporting-service."
+      }
+    },
+    "/internal/v1/proposals/{proposalId}/project-reference": {
+      "put": {
+        "tags": [
+          "internal"
+        ],
+        "operationId": "put_internal_v1_proposals_proposalId_project_reference",
+        "summary": "PUT /internal/v1/proposals/{proposalId}/project-reference",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectReference"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Workload token with proposal-service audience, client_id matching sub, allowlisted client, and the route-specific scope. Projection endpoints require reporting-service."
+      }
+    },
+    "/internal/v1/proposals/{proposalId}/access-context": {
+      "get": {
+        "tags": [
+          "internal"
+        ],
+        "operationId": "get_internal_v1_proposals_proposalId_access_context",
+        "summary": "GET /internal/v1/proposals/{proposalId}/access-context",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "proposalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subjectId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Workload token with proposal-service audience, client_id matching sub, allowlisted client, and the route-specific scope. Projection endpoints require reporting-service."
+      }
+    },
+    "/api/v1/me/proposals": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_me_proposals",
+        "summary": "GET /api/v1/me/proposals",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/me/evaluation-assignments": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_me_evaluation_assignments",
+        "summary": "GET /api/v1/me/evaluation-assignments",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/evaluation-assignments": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_evaluation_assignments",
+        "summary": "GET /api/v1/evaluation-assignments",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/evaluation-criteria": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_evaluation_criteria",
+        "summary": "GET /api/v1/evaluation-criteria",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/evaluation-criteria/{criterionCode}": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_evaluation_criteria_criterionCode",
+        "summary": "GET /api/v1/evaluation-criteria/{criterionCode}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "criterionCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/reference/research-areas": {
+      "get": {
+        "tags": [
+          "proposals"
+        ],
+        "operationId": "get_api_v1_reference_research_areas",
+        "summary": "GET /api/v1/reference/research-areas",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/internal/v1/projection-state/{aggregate}/{id}": {
+      "get": {
+        "tags": [
+          "internal"
+        ],
+        "operationId": "get_internal_v1_projection_state_aggregate_id",
+        "summary": "GET /internal/v1/projection-state/{aggregate}/{id}",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "aggregate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Workload token with proposal-service audience, client_id matching sub, allowlisted client, and the route-specific scope. Projection endpoints require reporting-service."
+      }
+    },
+    "/internal/v1/projection-snapshots": {
+      "get": {
+        "tags": [
+          "internal"
+        ],
+        "operationId": "get_internal_v1_projection_snapshots",
+        "summary": "GET /internal/v1/projection-snapshots",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "201": {
+            "$ref": "#/components/responses/Status201"
+          },
+          "204": {
+            "$ref": "#/components/responses/Status204"
+          },
+          "400": {
+            "$ref": "#/components/responses/Status400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Status403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Status409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Status412"
+          },
+          "422": {
+            "$ref": "#/components/responses/Status422"
+          },
+          "428": {
+            "$ref": "#/components/responses/Status428"
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projection",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PROPOSALS",
+                "EVALUATIONS"
+              ]
+            }
+          }
+        ],
+        "description": "Workload token with proposal-service audience, client_id matching sub, allowlisted client, and the route-specific scope. Projection endpoints require reporting-service."
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "EvaluationStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "SUBMITTED",
+          "RELEASED"
+        ]
+      },
+      "EvaluationDecision": {
+        "type": "string",
+        "enum": [
+          "APPROVE",
+          "REQUEST_CHANGES",
+          "REJECT"
+        ]
+      },
+      "EvaluatorAssignmentStatus": {
+        "type": "string",
+        "enum": [
+          "ASSIGNED",
+          "ACCEPTED",
+          "DECLINED",
+          "COMPLETED",
+          "REVOKED"
+        ]
+      },
+      "ObjectiveType": {
+        "type": "string",
+        "enum": [
+          "GENERAL",
+          "SPECIFIC"
+        ]
+      },
+      "ProposalStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "SUBMITTED",
+          "UNDER_REVIEW",
+          "CHANGES_REQUESTED",
+          "APPROVED",
+          "REJECTED",
+          "CANCELLED"
+        ]
+      },
+      "ProcessedEventResult": {
+        "type": "string",
+        "enum": [
+          "SUCCEEDED",
+          "IGNORED"
+        ]
+      },
+      "ProposalDecision": {
+        "type": "string",
+        "enum": [
+          "APPROVED",
+          "CHANGES_REQUESTED",
+          "REJECTED"
+        ]
+      },
+      "Objective": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ObjectiveType"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "type",
+          "description"
+        ]
+      },
+      "ProposalInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "abstract": {
+            "type": "string"
+          },
+          "researchProblem": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "objectives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Objective"
+            },
+            "maxItems": 100
+          },
+          "methodology": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "researchAreaCode": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "researcherIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 100
+          },
+          "expectedResults": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "estimatedDurationMonths": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "supportingDocumentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 100
+          }
+        }
+      },
+      "CreationPlan": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "coordinatorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "plannedEndDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "coordinatorId",
+          "plannedEndDate"
+        ]
+      },
+      "Transition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "targetStatus": {
+            "$ref": "#/components/schemas/ProposalStatus"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "creationPlan": {
+            "$ref": "#/components/schemas/CreationPlan"
+          }
+        },
+        "required": [
+          "targetStatus"
+        ]
+      },
+      "ResearcherInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "proposalRole": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "responsibility": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      },
+      "AssignmentInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "evaluatorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "instructions": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      },
+      "Score": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "criterionCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "score": {
+            "type": "number",
+            "multipleOf": 0.01
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterionCode",
+          "score"
+        ]
+      },
+      "EvaluationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "criteria": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Score"
+            },
+            "maxItems": 100
+          },
+          "observations": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "recommendations": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "decision": {
+            "$ref": "#/components/schemas/EvaluationDecision"
+          }
+        }
+      },
+      "ProjectReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "approvalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "approvalId",
+          "projectId"
+        ]
+      },
+      "Page": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "hasMore": {
+            "type": "string"
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "instance",
+          "code",
+          "correlationId"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Status200": {
+        "description": "Successful query or update"
+      },
+      "Status201": {
+        "description": "Resource created"
+      },
+      "Status204": {
+        "description": "Operation completed"
+      },
+      "Status400": {
+        "description": "Invalid request",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Status401": {
+        "description": "Missing or invalid authentication",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Status403": {
+        "description": "Access denied",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Status404": {
+        "description": "Absent or not visible",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Status409": {
+        "description": "State or uniqueness conflict",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Status412": {
+        "description": "Stale ETag",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Status422": {
+        "description": "Domain validation failed",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Status428": {
+        "description": "If-Match required",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Status503": {
+        "description": "Storage or dependency unavailable",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    }
+  }
+}

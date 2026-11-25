@@ -127,6 +127,9 @@ public class ProposalEntity {
     @Column(name = "updated_by", nullable = false)
     private UUID updatedBy;
 
+    @Column(name="access_version",nullable=false)
+    private Long accessVersion=1L;
+
     @Version
     @Column(name = "version", nullable = false)
     @Setter(AccessLevel.NONE)

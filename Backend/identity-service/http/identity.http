@@ -1,0 +1,39 @@
+# Set tokens in your HTTP client's private environment; do not commit credentials.
+@baseUrl = http://localhost:8081
+
+### Current profile and ETag
+GET {{baseUrl}}/api/v1/me
+Authorization: Bearer {{userToken}}
+
+### Provision an institutional user
+POST {{baseUrl}}/api/v1/users
+Authorization: Bearer {{adminToken}}
+Idempotency-Key: provision-researcher-001
+Content-Type: application/json
+
+{
+  "identitySubject": "institutional-researcher-subject",
+  "institutionalId": "A01234567",
+  "email": "researcher@university.example",
+  "displayName": "Researcher",
+  "roles": ["RESEARCHER"]
+}
+
+### Update your profile using the ETag from GET /me
+PATCH {{baseUrl}}/api/v1/me
+Authorization: Bearer {{userToken}}
+If-Match: "1"
+Content-Type: application/json
+
+{"displayName":"Updated Name","locale":"es-MX"}
+
+### Evaluate resource access as an authorized workload
+POST {{baseUrl}}/internal/v1/authorization/check
+Authorization: Bearer {{serviceToken}}
+Content-Type: application/json
+
+{
+  "subjectId": "{{userId}}",
+  "action": "PROJECT_READ",
+  "resource": {"type":"PROJECT","id":"{{projectId}}"}
+}

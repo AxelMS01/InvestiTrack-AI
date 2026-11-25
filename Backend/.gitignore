@@ -1,0 +1,4 @@
+# Private settings for the unified local stack
+.env
+.env.*
+!.env.example

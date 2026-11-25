@@ -1,0 +1,32 @@
+services:
+  report-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: reporting_db
+      POSTGRES_USER: ${DATABASE_USERNAME:-reporting}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env.docker}
+    volumes:
+      - report-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [investitrack]
+  report-service:
+    build: .
+    image: investitrack-report:local
+    container_name: report-service
+    env_file: .env.docker
+    ports:
+      - "127.0.0.1:8085:8085"
+    depends_on:
+      report-postgres:
+        condition: service_healthy
+    networks: [investitrack]
+    restart: unless-stopped
+volumes:
+  report-postgres-data:
+networks:
+  investitrack:
+    external: true

@@ -1,0 +1,63 @@
+@base = http://localhost:8084
+@accessToken = replace-with-user-token
+@projectId = 00000000-0000-0000-0000-000000000001
+@uploadId = replace-after-initialization
+@documentId = replace-after-completion
+@etag = "1"
+
+### Initialize (replace size and SHA-256 with the exact file's values)
+POST {{base}}/api/v1/document-uploads
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Idempotency-Key: research-protocol-1
+
+{
+  "fileName": "research.pdf",
+  "contentType": "application/pdf",
+  "sizeBytes": 1024,
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "documentType": "RESEARCH_PROTOCOL",
+  "classification": "CONFIDENTIAL",
+  "context": {"projectId": "{{projectId}}"}
+}
+
+### PUT the binary file to the returned uploadUrl before completing
+POST {{base}}/api/v1/document-uploads/{{uploadId}}/completion
+Authorization: Bearer {{accessToken}}
+
+### Poll for documentId, then processing status (workers perform scanning/extraction)
+GET {{base}}/api/v1/document-uploads/{{uploadId}}
+Authorization: Bearer {{accessToken}}
+
+###
+GET {{base}}/api/v1/documents/{{documentId}}/processing-status
+Authorization: Bearer {{accessToken}}
+
+### Search authorized available documents
+GET {{base}}/api/v1/documents?projectId={{projectId}}&limit=25
+Authorization: Bearer {{accessToken}}
+
+### Read metadata and copy its ETag response header
+GET {{base}}/api/v1/documents/{{documentId}}
+Authorization: Bearer {{accessToken}}
+
+### Update metadata
+PATCH {{base}}/api/v1/documents/{{documentId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+If-Match: {{etag}}
+
+{"logicalName":"Research protocol"}
+
+### Short-lived download, available only after a clean scan
+POST {{base}}/api/v1/documents/{{documentId}}/download-authorization
+Authorization: Bearer {{accessToken}}
+
+### Version history
+GET {{base}}/api/v1/documents/{{documentId}}/versions
+Authorization: Bearer {{accessToken}}
+
+### Soft deletion (refresh ETag first)
+DELETE {{base}}/api/v1/documents/{{documentId}}
+Authorization: Bearer {{accessToken}}
+If-Match: {{etag}}

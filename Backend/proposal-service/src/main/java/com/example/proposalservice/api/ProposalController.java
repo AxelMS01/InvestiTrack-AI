@@ -18,7 +18,7 @@ public class ProposalController {
     private Caller caller() { return Caller.current(); }
     static ResponseEntity<Map<String,Object>> ok(Map<String,Object> body) { return ResponseEntity.ok().eTag("\""+body.get("version")+"\"").body(body); }
     static ResponseEntity<Map<String,Object>> created(String path,Map<String,Object> body) { return ResponseEntity.created(URI.create(path+"/"+body.get("id"))).eTag("\""+body.get("version")+"\"").body(body); }
-    private CollectionResponse<Map<String,Object>> page(List<Map<String,Object>> values,int limit,String cursor) { return CursorPages.page(values,limit,cursor,"id",Set.of("id")); }
+    private CollectionResponse<Map<String,Object>> page(List<Map<String,Object>> values,int limit,String cursor) { return CursorPages.boundPage(values,limit,cursor,"id",Set.of("id"),Caller.current().id()+":"+((org.springframework.web.context.request.ServletRequestAttributes)org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest().getRequestURI()); }
 
     @GetMapping
     public CollectionResponse<Map<String,Object>> list(@RequestParam(required=false) String q,@RequestParam(required=false) List<ProposalStatus> status,

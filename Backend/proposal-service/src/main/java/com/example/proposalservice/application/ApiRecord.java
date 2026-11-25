@@ -13,5 +13,10 @@ class ApiRecord {
     @Id @Column(length=200) private String id;
     @Column(nullable=false, length=64) private String requestHash;
     @Column(nullable=false, columnDefinition="text") private String payload;
-    ApiRecord(String id,String requestHash,String payload) { this.id=id; this.requestHash=requestHash; this.payload=payload; }
+    @Column(nullable=false) private java.time.Instant createdAt=java.time.Instant.now();
+    private java.time.Instant expiresAt;
+    ApiRecord(String id,String requestHash,String payload) {
+        this.id=id; this.requestHash=requestHash; this.payload=payload;
+        if(id.startsWith("request:"))expiresAt=createdAt.plus(java.time.Duration.ofHours(24));
+    }
 }

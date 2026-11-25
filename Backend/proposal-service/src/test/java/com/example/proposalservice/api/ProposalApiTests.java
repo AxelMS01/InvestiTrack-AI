@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class ProposalApiTests {
+class ProposalApiTests extends com.example.proposalservice.PostgresTestSupport {
     @Autowired MockMvc mvc;
     @Autowired EntityManager em;
     @Autowired ObjectMapper json;
@@ -34,13 +34,21 @@ class ProposalApiTests {
     String area="AREA_"+UUID.randomUUID().toString().substring(0,8);
     String criterionCode="MERIT_"+UUID.randomUUID().toString().substring(0,8);
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.example.proposalservice.infrastructure.IdentityClient identity;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    org.springframework.security.oauth2.jwt.JwtDecoder decoder;
     @BeforeEach
     public void catalog() {
+        org.mockito.Mockito.when(identity.resolve(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation->{
+            org.springframework.security.oauth2.jwt.Jwt token=invocation.getArgument(0);var roles=token.getClaimAsStringList("roles");if(roles==null)roles=List.of();
+            return new Caller(UUID.fromString(token.getClaimAsString("user_id")),roles.contains("COORDINATOR"),roles.contains("ADMIN"),roles.contains("RESEARCHER"),roles.contains("AUDITOR"),roles.contains("EVALUATOR"));
+        });
         em.persist(new ResearchAreaEntity(area,"Engineering","Research area",owner));
         var criterion=new EvaluationCriterionEntity("Scientific merit","Merit",BigDecimal.ONE,new BigDecimal("5"),BigDecimal.ONE,LocalDate.now().minusDays(1),owner);
         criterion.setCode(criterionCode); em.persist(criterion); em.flush();
     }
-    RequestPostProcessor as(UUID user,String role) { return jwt().jwt(j->j.subject("institutional-subject").claim("user_id",user.toString()).claim("roles",List.of(role))); }
+    RequestPostProcessor as(UUID user,String role) { return jwt().jwt(j->j.subject("institutional-subject").audience(List.of("research-platform-api")).claim("user_id",user.toString()).claim("roles",List.of(role))); }
     String body() { return """
         {"title":"Sensor research","abstract":"Summary","researchProblem":"Problem",
         "methodology":"Method","expectedResults":"Results","estimatedDurationMonths":12,
@@ -54,7 +62,7 @@ class ProposalApiTests {
     String etag(String path,UUID user,String role) throws Exception { return mvc.perform(get(path).with(as(user,role))).andExpect(status().isOk()).andReturn().getResponse().getHeader("ETag"); }
     JsonNode transition(String path,String target,UUID user,String role) throws Exception {
         return json.readTree(mvc.perform(post(path+"/transitions").with(as(user,role)).header("If-Match",etag(path,user,role))
-            .contentType("application/json").content("{\"targetStatus\":\""+target+"\"}"))
+            .contentType("application/json").content("{\"targetStatus\":\""+target+"\""+(target.equals("APPROVED")?",\"creationPlan\":{\"coordinatorId\":\""+coordinator+"\",\"startDate\":\"2026-12-01\",\"plannedEndDate\":\"2027-12-01\"}":"")+"}"))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
     }
 
@@ -155,7 +163,7 @@ class ProposalApiTests {
         transition(path,"APPROVED",coordinator,"COORDINATOR");
         String internal="/internal/v1/proposals/"+path.substring(path.lastIndexOf('/')+1);
         mvc.perform(get(internal+"/project-creation-data").with(as(owner,"RESEARCHER"))).andExpect(status().isForbidden());
-        var service=jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("SCOPE_proposal:project-integration"));
+        var service=jwt().jwt(j->j.subject("project-execution-service").audience(List.of("proposal-service")).claim("client_id","project-execution-service")).authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("SCOPE_proposal:project-integration"));
         var snapshot=json.readTree(mvc.perform(get(internal+"/project-creation-data").with(service)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         String reference="{\"approvalId\":\""+snapshot.get("approvalId").stringValue()+"\",\"projectId\":\""+UUID.randomUUID()+"\"}";
         for(int i=0;i<2;i++) mvc.perform(put(internal+"/project-reference").with(service).contentType("application/json").content(reference)).andExpect(status().isNoContent());

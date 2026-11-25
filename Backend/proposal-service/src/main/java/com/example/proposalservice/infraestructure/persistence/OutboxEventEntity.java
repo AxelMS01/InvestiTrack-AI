@@ -20,7 +20,11 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class OutboxEventEntity extends UuidEntity {
+public class OutboxEventEntity {
+    @Id @NotNull @Setter(AccessLevel.NONE)
+    @Column(name="id",nullable=false,updatable=false)
+    private UUID id;
+
 
     @NotNull
     @Size(max = 100)
@@ -68,7 +72,11 @@ public class OutboxEventEntity extends UuidEntity {
     @Column(name = "next_attempt_at", columnDefinition = "timestamptz")
     private Instant nextAttemptAt;
 
+    public OutboxEventEntity(UUID eventId,String aggregateType,UUID aggregateId,String eventType,Integer eventVersion,String payload,Instant occurredAt) {
+        this(aggregateType,aggregateId,eventType,eventVersion,payload,occurredAt);this.id=eventId;
+    }
     public OutboxEventEntity(String aggregateType, UUID aggregateId, String eventType, Integer eventVersion, String payload, Instant occurredAt) {
+        this.id=UUID.randomUUID();
         this.aggregateType = aggregateType;
         this.aggregateId = aggregateId;
         this.eventType = eventType;

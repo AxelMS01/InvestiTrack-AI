@@ -1,23 +1,17 @@
 package com.example.proposalservice.api;
 
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.context.request.*;
 import java.util.UUID;
 import static com.example.proposalservice.api.ApiException.require;
 
-/** Application user IDs are explicit signed claims; institutional subjects need not be UUIDs. */
-public record Caller(UUID id, boolean coordinator, boolean administrator, boolean researcher, boolean auditor) {
+/** Current account UUID/roles resolved by the security filter through live Identity data. */
+public record Caller(UUID id,boolean coordinator,boolean administrator,boolean researcher,boolean auditor,boolean evaluator) {
+    public static final String ATTRIBUTE="proposalCaller";
+    public Caller(UUID id,boolean coordinator,boolean administrator,boolean researcher,boolean auditor){this(id,coordinator,administrator,researcher,auditor,false);}
     public static Caller current() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        require(auth instanceof JwtAuthenticationToken, 401, "UNAUTHENTICATED", "A bearer token is required.");
-        var jwt = ((JwtAuthenticationToken) auth).getToken();
-        UUID id;
-        try { id = UUID.fromString(jwt.getClaimAsString("user_id")); }
-        catch (RuntimeException ex) { throw new ApiException(403, "USER_MAPPING_REQUIRED", "Token must contain the mapped application UUID in user_id."); }
-        var roles = jwt.getClaimAsStringList("roles");
-        return new Caller(id, roles != null && roles.contains("COORDINATOR"),
-            roles != null && roles.contains("ADMINISTRATOR"), roles != null && roles.contains("RESEARCHER"),
-            roles != null && roles.contains("AUDITOR"));
+        var attrs=RequestContextHolder.getRequestAttributes();
+        var caller=attrs instanceof ServletRequestAttributes s?s.getRequest().getAttribute(ATTRIBUTE):null;
+        require(caller instanceof Caller,401,"UNAUTHENTICATED","A current authenticated account is required.");return (Caller)caller;
     }
-    public void requireCoordinator() { require(coordinator,403,"FORBIDDEN","Coordinator role is required."); }
+    public void requireCoordinator(){require(coordinator,403,"FORBIDDEN","Coordinator role is required.");}
 }

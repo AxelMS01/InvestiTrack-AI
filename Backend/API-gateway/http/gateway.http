@@ -1,0 +1,663 @@
+# IntelliJ HTTP Client: run in order after python3 scripts/refresh-http-env.py --setup.
+# All API requests use the gateway; tokens are issued separately by Keycloak.
+# Copy http-client.env.json.example to http-client.private.env.json in this directory,
+# fill in tokens and application UUIDs, then select the local environment.
+# .env configures Spring/Docker; IntelliJ HTTP Client does not load it automatically.
+# Tokens require research-platform-api audience and the matching signed role.
+# Identity must also contain active profiles with those roles; evaluator != researcher.
+# First run Identity profile requests, then Proposal steps 2-18, then Project workflow.
+# Optional requests live in gateway-optional.http; refresh the owning resource's
+# ETag before every mutation, including after adding/removing children.
+# --setup seeds development catalogs and configures local workload credentials.
+# Assignment/approval/member checks need IDENTITY_SERVICE_TOKEN in the owning services.
+# Project creation needs PROPOSAL_SERVICE_TOKEN; document writes need Document + delegation.
+# Missing dependencies can return 503 even when liveness reports UP.
+@baseUrl = http://localhost:8080
+
+
+### Identity: administrator profile
+GET {{baseUrl}}/api/v1/me
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("Identity: administrator profile", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Identity: researcher profile and application UUID
+GET {{baseUrl}}/api/v1/me
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Identity: researcher profile and application UUID", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("profileEtag", etag);
+    if (response.body.id) client.global.set("researcherId", response.body.id);
+}
+%}
+
+
+### Identity: coordinator profile and application UUID
+GET {{baseUrl}}/api/v1/me
+Authorization: Bearer {{coordinatorToken}}
+
+> {%
+client.test("Identity: coordinator profile and application UUID", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    if (response.body.id) client.global.set("coordinatorId", response.body.id);
+}
+%}
+
+
+### Identity: evaluator profile and application UUID
+GET {{baseUrl}}/api/v1/me
+Authorization: Bearer {{evaluatorToken}}
+
+> {%
+client.test("Identity: evaluator profile and application UUID", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    if (response.body.id) client.global.set("evaluatorUserId", response.body.id);
+}
+%}
+
+
+### Identity: current permissions
+GET {{baseUrl}}/api/v1/me/permissions
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Identity: current permissions", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Identity: list users
+GET {{baseUrl}}/api/v1/users?limit=25
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("Identity: list users", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Identity: role catalog
+GET {{baseUrl}}/api/v1/roles
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("Identity: role catalog", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Identity: researcher role
+GET {{baseUrl}}/api/v1/roles/RESEARCHER
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("Identity: researcher role", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Proposal workflow: run steps in order after configuring profiles, catalogs and credentials.
+### 2. Research areas. If empty, run seed-test-catalogs.sql against your development DB.
+GET {{baseUrl}}/api/v1/reference/research-areas
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Research areas available", function () {
+    client.assert(response.status === 200, "Expected 200; verify your access token");
+    client.assert(response.body.items.length > 0, "Seed an active research area first");
+});
+if (response.status === 200 && response.body.items.length > 0) {
+    client.global.set("researchAreaCode", response.body.items[0].code);
+}
+%}
+
+### 3. Evaluation criteria. Every active criterion must be scored before evaluation submission.
+GET {{baseUrl}}/api/v1/evaluation-criteria?limit=100
+Authorization: Bearer {{evaluatorToken}}
+
+> {%
+client.test("Evaluation criteria available", function () {
+    client.assert(response.status === 200, "Expected 200; token needs EVALUATOR or COORDINATOR role");
+    client.assert(response.body.items.length > 0, "Seed an active evaluation criterion first");
+    client.assert(!response.body.page.hasMore, "Fetch remaining criteria and include them in the evaluation");
+});
+if (response.status === 200 && response.body.items.length > 0) {
+    client.global.set("criterionCode", response.body.items[0].code);
+    client.global.set("evaluationCriteria", JSON.stringify(response.body.items.map(function (criterion) {
+        return {criterionCode: criterion.code, score: criterion.minimumScore, comment: "HTTP Client test"};
+    })));
+}
+%}
+
+### 4. Create a draft. Expected: 201. Run again to create a new proposal.
+POST {{baseUrl}}/api/v1/proposals
+Authorization: Bearer {{researcherToken}}
+Content-Type: application/json
+
+{
+  "title": "Water quality monitoring with low-cost sensors",
+  "abstract": "Evaluate low-cost sensors for water quality monitoring.",
+  "researchProblem": "Conventional monitoring equipment is expensive.",
+  "objectives": [
+    {"type": "GENERAL", "description": "Evaluate sensor accuracy."},
+    {"type": "SPECIFIC", "description": "Compare results with reference equipment."}
+  ],
+  "methodology": "Collect paired sensor and reference measurements.",
+  "researchAreaCode": "{{researchAreaCode}}",
+  "expectedResults": "A validated sensor monitoring protocol.",
+  "estimatedDurationMonths": 12,
+  "supportingDocumentIds": []
+}
+
+> {%
+client.test("Draft created", function () { client.assert(response.status === 201, "Expected 201"); });
+if (response.status === 201) {
+    client.global.set("proposalId", response.body.id);
+    client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+}
+%}
+
+### 5. List the current user's proposals. Expected: 200.
+GET {{baseUrl}}/api/v1/proposals?limit=25&sort=-updatedAt&status=DRAFT
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("5. List the current user's proposals. Expected: 200.", function () { client.assert(response.status === 200, "Expected 200"); });
+%}
+
+### 6. Get proposal and refresh ETag. Rerun this whenever the proposal version changes.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("6. Get proposal and refresh ETag. Rerun this whenever the proposal version changes.", function () { client.assert(response.status === 200, "Expected 200"); });
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 7. Edit the draft. Expected: 200.
+PATCH {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{researcherToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{"title": "Water quality monitoring — pilot study"}
+
+> {%
+client.test("7. Edit the draft. Expected: 200.", function () { client.assert(response.status === 200, "Expected 200"); });
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 8. Submit. Expected: 200 with SUBMITTED status.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/transitions
+Authorization: Bearer {{researcherToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{"targetStatus": "SUBMITTED"}
+
+> {%
+client.test("8. Submit. Expected: 200 with SUBMITTED status.", function () { client.assert(response.status === 200, "Expected 200"); });
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 9. Assign an evaluator as coordinator. Expected: 201.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluator-assignments
+Authorization: Bearer {{coordinatorToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{
+  "evaluatorId": "{{evaluatorUserId}}",
+  "instructions": "Evaluate scientific merit and feasibility."
+}
+
+> {%
+client.test("9. Assign an evaluator as coordinator. Expected: 201.", function () { client.assert(response.status === 201, "Expected 201"); });
+if (response.status === 201) {
+    client.global.set("assignmentId", response.body.id);
+    client.global.set("assignmentEtag", response.headers.valueOf("ETag"));
+}
+%}
+
+### 10. Assignment creation changes the proposal version: refresh it before transitioning.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{coordinatorToken}}
+
+> {%
+client.test("10. Assignment creation changes the proposal version: refresh it before transitioning.", function () { client.assert(response.status === 200, "Expected 200"); });
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 11. Start review as coordinator. Expected: 200 with UNDER_REVIEW status.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/transitions
+Authorization: Bearer {{coordinatorToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{"targetStatus": "UNDER_REVIEW"}
+
+> {%
+client.test("11. Start review as coordinator. Expected: 200 with UNDER_REVIEW status.", function () { client.assert(response.status === 200, "Expected 200"); });
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 12. Create evaluation using the assigned evaluator's token. Expected: 201.
+# This example uses minimum valid scores. Adjust scores before submission as needed.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations
+Authorization: Bearer {{evaluatorToken}}
+Content-Type: application/json
+
+{
+  "criteria": {{evaluationCriteria}},
+  "observations": "Pilot evaluation created through IntelliJ HTTP Client.",
+  "recommendations": "Document the calibration procedure.",
+  "decision": "APPROVE"
+}
+
+> {%
+client.test("12. Create evaluation using the assigned evaluator's token. Expected: 201.", function () { client.assert(response.status === 201, "Expected 201"); });
+if (response.status === 201) {
+    client.global.set("evaluationId", response.body.id);
+    client.global.set("evaluationEtag", response.headers.valueOf("ETag"));
+}
+%}
+
+### 13. Submit and lock evaluation. Expected: 200 with SUBMITTED status.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations/{{evaluationId}}/submission
+Authorization: Bearer {{evaluatorToken}}
+If-Match: {{evaluationEtag}}
+
+> {%
+client.test("13. Submit and lock evaluation. Expected: 200 with SUBMITTED status.", function () { client.assert(response.status === 200, "Expected 200"); });
+if (response.status === 200) client.global.set("evaluationEtag", response.headers.valueOf("ETag"));
+%}
+
+### 14. Release evaluation to researchers as coordinator. Expected: 200.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations/{{evaluationId}}/release
+Authorization: Bearer {{coordinatorToken}}
+If-Match: {{evaluationEtag}}
+
+> {%
+client.test("14. Release evaluation to researchers as coordinator. Expected: 200.", function () { client.assert(response.status === 200, "Expected 200"); });
+if (response.status === 200) client.global.set("evaluationEtag", response.headers.valueOf("ETag"));
+%}
+
+### 15. Evaluation submission changes the proposal version: refresh it.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{coordinatorToken}}
+
+> {%
+client.test("15. Evaluation submission changes the proposal version: refresh it.", function () { client.assert(response.status === 200, "Expected 200"); });
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### 16. Approve as coordinator. Expected: 200 with APPROVED status.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/transitions
+Authorization: Bearer {{coordinatorToken}}
+Content-Type: application/json
+If-Match: {{proposalEtag}}
+
+{
+  "targetStatus": "APPROVED",
+  "reason": "Evaluation policy satisfied.",
+  "creationPlan": {
+    "coordinatorId": "{{coordinatorId}}",
+    "startDate": "2026-12-01",
+    "plannedEndDate": "2027-12-01"
+  }
+}
+
+> {%
+client.test("16. Approve as coordinator. Expected: 200 with APPROVED status.", function () { client.assert(response.status === 200, "Expected 200"); });
+if (response.status === 200) client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+%}
+
+### Capture the approved snapshot ID for Project creation
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{coordinatorToken}}
+
+> {%
+client.test("Approved snapshot available", function () {
+    client.assert(response.status === 200, "Expected 200");
+    client.assert(!!response.body.approvalId, "Approve the proposal before creating a project");
+});
+if (response.status === 200) {
+    client.global.set("proposalEtag", response.headers.valueOf("ETag"));
+    if (response.body.approvalId) client.global.set("approvalId", response.body.approvalId);
+}
+%}
+
+### 17. View released evaluations as the researcher. Expected: 200.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("17. View released evaluations as the researcher. Expected: 200.", function () { client.assert(response.status === 200, "Expected 200"); });
+%}
+
+### 18. View proposal history. Expected: 200.
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}/history
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("18. View proposal history. Expected: 200.", function () { client.assert(response.status === 200, "Expected 200"); });
+%}
+
+### Negative check: missing token. Expected: 401.
+GET {{baseUrl}}/api/v1/proposals
+
+> {%
+client.test("Negative check: missing token. Expected: 401.", function () { client.assert(response.status === 401, "Expected 401"); });
+%}
+
+### Negative check: invalid page size. Expected: 400.
+GET {{baseUrl}}/api/v1/proposals?limit=101
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Negative check: invalid page size. Expected: 400.", function () { client.assert(response.status === 400, "Expected 400"); });
+%}
+
+### Negative check: missing If-Match. Expected: 428.
+# Coordinator is authorized to attempt a transition; the precondition check runs first.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/transitions
+Authorization: Bearer {{coordinatorToken}}
+Content-Type: application/json
+
+{"targetStatus": "REJECTED"}
+
+> {%
+client.test("Negative check: missing If-Match. Expected: 428.", function () { client.assert(response.status === 428, "Expected 428"); });
+%}
+
+### Project: create from the approved Proposal snapshot
+# Requires Project workload credentials for Proposal snapshot reads and Identity status checks.
+POST {{baseUrl}}/api/v1/projects
+Authorization: Bearer {{coordinatorToken}}
+Content-Type: application/json
+
+{
+  "proposalId": "{{proposalId}}",
+  "approvalId": "{{approvalId}}"
+}
+
+> {%
+client.test("Project: create from the approved Proposal snapshot", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+    if (response.body.id) client.global.set("projectId", response.body.id);
+}
+%}
+
+
+### Project: list visible projects
+GET {{baseUrl}}/api/v1/projects?limit=25
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: list visible projects", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Project: current user projects
+GET {{baseUrl}}/api/v1/me/projects?limit=25
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: current user projects", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Project: get project and refresh ETag
+GET {{baseUrl}}/api/v1/projects/{{projectId}}
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: get project and refresh ETag", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: activate project
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/transitions
+Authorization: Bearer {{coordinatorToken}}
+If-Match: {{projectEtag}}
+Content-Type: application/json
+
+{
+  "targetStatus": "ACTIVE",
+  "reason": "Start HTTP Client test project"
+}
+
+> {%
+client.test("Project: activate project", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: create activity
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/activities
+Authorization: Bearer {{researcherToken}}
+If-Match: {{projectEtag}}
+Content-Type: application/json
+
+{
+  "name": "Calibrate field sensors",
+  "responsibleUserId": "{{researcherId}}",
+  "startDate": "2026-12-01",
+  "deadline": "2027-01-01",
+  "weight": 10
+}
+
+> {%
+client.test("Project: create activity", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("activityEtag", etag);
+    if (response.body.id) client.global.set("activityId", response.body.id);
+}
+%}
+
+
+### Project: get activity and refresh ETag
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/activities/{{activityId}}
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: get activity and refresh ETag", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("activityEtag", etag);
+}
+%}
+
+
+### Project: start activity
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/activities/{{activityId}}/transitions
+Authorization: Bearer {{researcherToken}}
+If-Match: {{activityEtag}}
+Content-Type: application/json
+
+{
+  "targetStatus": "IN_PROGRESS"
+}
+
+> {%
+client.test("Project: start activity", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("activityEtag", etag);
+}
+%}
+
+
+### Project: refresh project after child mutations
+GET {{baseUrl}}/api/v1/projects/{{projectId}}
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: refresh project after child mutations", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: create milestone
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/milestones
+Authorization: Bearer {{researcherToken}}
+If-Match: {{projectEtag}}
+Content-Type: application/json
+
+{
+  "name": "Pilot calibration complete",
+  "deadline": "2027-02-01",
+  "weight": 10,
+  "displayOrder": 0
+}
+
+> {%
+client.test("Project: create milestone", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("milestoneEtag", etag);
+    if (response.body.id) client.global.set("milestoneId", response.body.id);
+}
+%}
+
+
+### Project: get milestone and refresh ETag
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/milestones/{{milestoneId}}
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: get milestone and refresh ETag", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("milestoneEtag", etag);
+}
+%}
+
+
+### Project: start milestone
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/milestones/{{milestoneId}}/transitions
+Authorization: Bearer {{researcherToken}}
+If-Match: {{milestoneEtag}}
+Content-Type: application/json
+
+{
+  "targetStatus": "IN_PROGRESS"
+}
+
+> {%
+client.test("Project: start milestone", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("milestoneEtag", etag);
+}
+%}
+
+
+### Project: progress
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/progress
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: progress", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Project: refresh project before publication
+GET {{baseUrl}}/api/v1/projects/{{projectId}}
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: refresh project before publication", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: create publication without a document dependency
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/publications
+Authorization: Bearer {{researcherToken}}
+If-Match: {{projectEtag}}
+Content-Type: application/json
+
+{
+  "title": "Sensor calibration pilot",
+  "type": "DATASET",
+  "authors": [
+    "HTTP Client Researcher"
+  ],
+  "publicationDate": "2027-01-01"
+}
+
+> {%
+client.test("Project: create publication without a document dependency", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("publicationEtag", etag);
+    if (response.body.id) client.global.set("publicationId", response.body.id);
+}
+%}
+
+

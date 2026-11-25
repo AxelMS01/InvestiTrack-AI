@@ -1,0 +1,30 @@
+services:
+  audit-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: audit_db
+      POSTGRES_USER: ${DATABASE_USERNAME:-audit_local}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in .env.docker}
+    volumes:
+      - audit-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [investitrack]
+  audit-service:
+    build: .
+    image: investitrack-audit:local
+    env_file: .env.docker
+    ports: ["127.0.0.1:8087:8087"]
+    depends_on:
+      audit-postgres:
+        condition: service_healthy
+    networks: [investitrack]
+    restart: unless-stopped
+volumes:
+  audit-postgres-data:
+networks:
+  investitrack:
+    external: true
