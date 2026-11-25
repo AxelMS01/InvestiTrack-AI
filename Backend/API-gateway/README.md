@@ -94,6 +94,37 @@ and `monitoring` scope. Liveness does not depend on downstream services.
 
 ## Verification
 
+Open [`http/gateway.http`](http/gateway.http) in IntelliJ's HTTP Client to test Identity,
+Proposal/Evaluation and Project through `http://localhost:8080`. It includes the approval-to-project
+workflow, optional CRUD requests, response assertions, and resource ID/ETag capture.
+
+Copy [`http/http-client.env.json.example`](http/http-client.env.json.example) to
+`http/http-client.private.env.json`, fill in your access tokens and test account UUIDs, and select
+the `local` environment. The private file is ignored by Git. IntelliJ does not load the gateway's
+`.env` automatically. Obtain tokens from Keycloak separately; its token endpoint is not gateway-routed.
+Each account needs its signed role and the matching active Identity role assignment.
+
+For the local Keycloak setup, run `python3 scripts/refresh-http-env.py --setup` from this directory.
+It creates isolated test accounts and Identity profiles, fills the private environment, and refreshes
+access tokens on later runs. Setup also seeds the local development catalogs and configures scoped
+Keycloak workload clients, then recreates Proposal and Project to apply their credentials.
+It reads administrator credentials from `../keycloak/.env`; credentials and tokens stay in ignored files.
+It fills `researchAreaCode`, `criterionCode`, and `evaluationCriteria` from the real catalogs.
+Run `python3 scripts/refresh-http-env.py` without the flag to refresh the five-minute user tokens;
+workload tokens are renewed and services recreated when they approach expiry.
+
+Run requests individually: Identity profiles first, Proposal steps in order, then Project creation
+and activities. Profile requests capture application UUIDs; creation/read responses capture IDs and
+quoted ETags. Refresh the resource's GET before each mutation, particularly after changing children.
+[`http/gateway-optional.http`](http/gateway-optional.http) contains the state-dependent and destructive
+CRUD examples; run those individually. The main `gateway.http` file is the ordered workflow.
+Catalog seeding is documented in `../proposal-service/http/seed-test-catalogs.sql`.
+The full workflow requires workload credentials in the services (Identity status checks and Proposal
+snapshot access). Evidence/report writes additionally require Document and delegated credentials;
+these dependencies are not established by the HTTP file. Liveness alone does not verify them.
+For the first final-report PUT, set `reportEtag` to the latest `projectEtag`; after that, obtain it
+from GET final-report. Management and internal endpoints intentionally return `404` on port `8080`.
+
 `./mvnw verify` runs HTTP integration tests with a local RSA/JWK provider and eight mock downstream
 services, exercising every public route, token validation, roles, CORS, header/body forwarding,
 size limits, management isolation, SSE and upstream failures. A clock-controlled unit test verifies

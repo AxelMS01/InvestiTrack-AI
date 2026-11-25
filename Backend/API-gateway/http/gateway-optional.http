@@ -1,0 +1,984 @@
+# Optional endpoint catalog: run individual requests in a valid resource state.
+# Run gateway.http first to capture resource IDs, and select the local environment.
+# Refresh GET resource ETags before mutations. These requests include deletion and
+# deactivation; they are examples, not an ordered workflow. Do not use Run All.
+# Evidence/report requests require the Document service, which is not implemented here.
+@baseUrl = http://localhost:8080
+
+# Optional endpoint catalog. Run individually in a valid resource state.
+# Destructive requests are last. Read the owning resource immediately before a mutation.
+
+
+### Identity: PATCH /api/v1/me
+PATCH {{baseUrl}}/api/v1/me
+Authorization: Bearer {{researcherToken}}
+If-Match: {{profileEtag}}
+Content-Type: application/json
+
+{
+  "displayName": "HTTP Client Researcher",
+  "locale": "es-MX"
+}
+
+> {%
+client.test("Identity: PATCH /api/v1/me", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("profileEtag", etag);
+}
+%}
+
+
+### Proposal: GET /api/v1/me/proposals
+GET {{baseUrl}}/api/v1/me/proposals
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Proposal: GET /api/v1/me/proposals", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Proposal: GET /api/v1/me/evaluation-assignments
+GET {{baseUrl}}/api/v1/me/evaluation-assignments
+Authorization: Bearer {{evaluatorToken}}
+
+> {%
+client.test("Proposal: GET /api/v1/me/evaluation-assignments", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Identity: POST /api/v1/users
+POST {{baseUrl}}/api/v1/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "identitySubject": "{{newIdentitySubject}}",
+  "institutionalId": "HTTP-TEST-001",
+  "email": "http-test@university.example",
+  "displayName": "HTTP Test User",
+  "roles": [
+    "RESEARCHER"
+  ]
+}
+
+> {%
+client.test("Identity: POST /api/v1/users", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("managedUserEtag", etag);
+    if (response.body.id) client.global.set("managedUserId", response.body.id);
+}
+%}
+
+
+### Identity: GET /api/v1/users/{userId}
+# Refresh GET /users/{managedUserId} before changing this disposable test account.
+GET {{baseUrl}}/api/v1/users/{{managedUserId}}
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("Identity: GET /api/v1/users/{userId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("managedUserEtag", etag);
+}
+%}
+
+
+### Identity: PATCH /api/v1/users/{userId}
+# Refresh GET /users/{managedUserId} before changing this disposable test account.
+PATCH {{baseUrl}}/api/v1/users/{{managedUserId}}
+Authorization: Bearer {{adminToken}}
+If-Match: {{managedUserEtag}}
+Content-Type: application/json
+
+{
+  "displayName": "Updated HTTP Test User"
+}
+
+> {%
+client.test("Identity: PATCH /api/v1/users/{userId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("managedUserEtag", etag);
+}
+%}
+
+
+### Identity: POST /api/v1/users/{userId}/deactivation
+# Refresh GET /users/{managedUserId} before changing this disposable test account.
+POST {{baseUrl}}/api/v1/users/{{managedUserId}}/deactivation
+Authorization: Bearer {{adminToken}}
+If-Match: {{managedUserEtag}}
+Content-Type: application/json
+
+{
+  "reason": "HTTP Client test"
+}
+
+> {%
+client.test("Identity: POST /api/v1/users/{userId}/deactivation", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("managedUserEtag", etag);
+}
+%}
+
+
+### Identity: GET /api/v1/users/{userId}/roles
+# Refresh GET /users/{managedUserId} before changing this disposable test account.
+GET {{baseUrl}}/api/v1/users/{{managedUserId}}/roles
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("Identity: GET /api/v1/users/{userId}/roles", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("managedUserEtag", etag);
+}
+%}
+
+
+### Identity: PUT /api/v1/users/{userId}/roles
+# Refresh GET /users/{managedUserId} before changing this disposable test account.
+PUT {{baseUrl}}/api/v1/users/{{managedUserId}}/roles
+Authorization: Bearer {{adminToken}}
+If-Match: {{managedUserEtag}}
+Content-Type: application/json
+
+{
+  "roles": [
+    "RESEARCHER"
+  ],
+  "reason": "HTTP Client test"
+}
+
+> {%
+client.test("Identity: PUT /api/v1/users/{userId}/roles", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("managedUserEtag", etag);
+}
+%}
+
+
+### Identity: POST /api/v1/users/{userId}/roles/{roleCode}
+# Refresh GET /users/{managedUserId} before changing this disposable test account.
+POST {{baseUrl}}/api/v1/users/{{managedUserId}}/roles/{{roleCode}}
+Authorization: Bearer {{adminToken}}
+If-Match: {{managedUserEtag}}
+Content-Type: application/json
+
+{
+  "reason": "HTTP Client test"
+}
+
+> {%
+client.test("Identity: POST /api/v1/users/{userId}/roles/{roleCode}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("managedUserEtag", etag);
+}
+%}
+
+
+### Identity: GET /api/v1/roles/{roleCode}
+GET {{baseUrl}}/api/v1/roles/{{roleCode}}
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("Identity: GET /api/v1/roles/{roleCode}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("profileEtag", etag);
+}
+%}
+
+
+### Proposal: GET /api/v1/proposals/{proposalId}/researchers
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}/researchers
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Proposal: GET /api/v1/proposals/{proposalId}/researchers", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("proposalEtag", etag);
+}
+%}
+
+
+### Proposal: POST /api/v1/proposals/{proposalId}/researchers
+# Requires a DRAFT/CHANGES_REQUESTED proposal.
+POST {{baseUrl}}/api/v1/proposals/{{proposalId}}/researchers
+Authorization: Bearer {{researcherToken}}
+If-Match: {{proposalEtag}}
+Content-Type: application/json
+
+{
+  "userId": "{{collaboratorId}}",
+  "proposalRole": "COLLABORATOR",
+  "responsibility": "Calibration"
+}
+
+> {%
+client.test("Proposal: POST /api/v1/proposals/{proposalId}/researchers", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("proposalEtag", etag);
+}
+%}
+
+
+### Proposal: PATCH /api/v1/proposals/{proposalId}/researchers/{userId}
+# Requires a DRAFT/CHANGES_REQUESTED proposal.
+PATCH {{baseUrl}}/api/v1/proposals/{{proposalId}}/researchers/{{collaboratorId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{proposalEtag}}
+Content-Type: application/json
+
+{
+  "responsibility": "Sensor validation"
+}
+
+> {%
+client.test("Proposal: PATCH /api/v1/proposals/{proposalId}/researchers/{userId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("proposalEtag", etag);
+}
+%}
+
+
+### Proposal: GET /api/v1/proposals/{proposalId}/evaluator-assignments
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluator-assignments
+Authorization: Bearer {{coordinatorToken}}
+
+> {%
+client.test("Proposal: GET /api/v1/proposals/{proposalId}/evaluator-assignments", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("proposalEtag", etag);
+}
+%}
+
+
+### Proposal: GET /api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluator-assignments/{{assignmentId}}
+Authorization: Bearer {{coordinatorToken}}
+
+> {%
+client.test("Proposal: GET /api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("assignmentEtag", etag);
+}
+%}
+
+
+### Proposal: PATCH /api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}
+# Requires a pending assignment.
+PATCH {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluator-assignments/{{assignmentId}}
+Authorization: Bearer {{coordinatorToken}}
+If-Match: {{assignmentEtag}}
+Content-Type: application/json
+
+{
+  "instructions": "Review calibration feasibility"
+}
+
+> {%
+client.test("Proposal: PATCH /api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("assignmentEtag", etag);
+}
+%}
+
+
+### Proposal: GET /api/v1/proposals/{proposalId}/evaluations/{evaluationId}
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations/{{evaluationId}}
+Authorization: Bearer {{evaluatorToken}}
+
+> {%
+client.test("Proposal: GET /api/v1/proposals/{proposalId}/evaluations/{evaluationId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("evaluationEtag", etag);
+}
+%}
+
+
+### Proposal: PATCH /api/v1/proposals/{proposalId}/evaluations/{evaluationId}
+# Requires an editable draft evaluation.
+PATCH {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations/{{evaluationId}}
+Authorization: Bearer {{evaluatorToken}}
+If-Match: {{evaluationEtag}}
+Content-Type: application/json
+
+{
+  "observations": "Updated draft observations"
+}
+
+> {%
+client.test("Proposal: PATCH /api/v1/proposals/{proposalId}/evaluations/{evaluationId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("evaluationEtag", etag);
+}
+%}
+
+
+### Proposal: GET /api/v1/proposals/{proposalId}/evaluations/{evaluationId}/history
+GET {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluations/{{evaluationId}}/history
+Authorization: Bearer {{evaluatorToken}}
+
+> {%
+client.test("Proposal: GET /api/v1/proposals/{proposalId}/evaluations/{evaluationId}/history", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("evaluationEtag", etag);
+}
+%}
+
+
+### Proposal: GET /api/v1/evaluation-criteria/{criterionCode}
+GET {{baseUrl}}/api/v1/evaluation-criteria/{{criterionCode}}
+Authorization: Bearer {{evaluatorToken}}
+
+> {%
+client.test("Proposal: GET /api/v1/evaluation-criteria/{criterionCode}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("proposalEtag", etag);
+}
+%}
+
+
+### Project: PATCH /api/v1/projects/{projectId}
+PATCH {{baseUrl}}/api/v1/projects/{{projectId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{projectEtag}}
+Content-Type: application/json
+
+{
+  "title": "Sensor calibration pilot project"
+}
+
+> {%
+client.test("Project: PATCH /api/v1/projects/{projectId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/history
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/history
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/history", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: POST /api/v1/projects/{projectId}/progress/recalculation
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/progress/recalculation
+Authorization: Bearer {{researcherToken}}
+If-Match: {{projectEtag}}
+
+> {%
+client.test("Project: POST /api/v1/projects/{projectId}/progress/recalculation", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/members
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/members
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/members", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: POST /api/v1/projects/{projectId}/members
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/members
+Authorization: Bearer {{researcherToken}}
+If-Match: {{projectEtag}}
+Content-Type: application/json
+
+{
+  "userId": "{{memberUserId}}",
+  "projectRole": "COLLABORATOR",
+  "permissions": []
+}
+
+> {%
+client.test("Project: POST /api/v1/projects/{projectId}/members", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("memberEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/members/{userId}
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/members/{{memberUserId}}
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/members/{userId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("memberEtag", etag);
+}
+%}
+
+
+### Project: PATCH /api/v1/projects/{projectId}/members/{userId}
+PATCH {{baseUrl}}/api/v1/projects/{{projectId}}/members/{{memberUserId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{memberEtag}}
+Content-Type: application/json
+
+{
+  "projectRole": "COLLABORATOR",
+  "permissions": []
+}
+
+> {%
+client.test("Project: PATCH /api/v1/projects/{projectId}/members/{userId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("memberEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/activities
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/activities
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/activities", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: PATCH /api/v1/projects/{projectId}/activities/{activityId}
+PATCH {{baseUrl}}/api/v1/projects/{{projectId}}/activities/{{activityId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{activityEtag}}
+Content-Type: application/json
+
+{
+  "name": "Updated calibration activity"
+}
+
+> {%
+client.test("Project: PATCH /api/v1/projects/{projectId}/activities/{activityId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("activityEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/activities/{activityId}/evidence
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/activities/{{activityId}}/evidence
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/activities/{activityId}/evidence", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("activityEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/milestones
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/milestones
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/milestones", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: PATCH /api/v1/projects/{projectId}/milestones/{milestoneId}
+PATCH {{baseUrl}}/api/v1/projects/{{projectId}}/milestones/{{milestoneId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{milestoneEtag}}
+Content-Type: application/json
+
+{
+  "name": "Updated pilot milestone"
+}
+
+> {%
+client.test("Project: PATCH /api/v1/projects/{projectId}/milestones/{milestoneId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("milestoneEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/milestones/{milestoneId}/activities
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/milestones/{{milestoneId}}/activities
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/milestones/{milestoneId}/activities", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/milestones/{milestoneId}/evidence
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/milestones/{{milestoneId}}/evidence
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/milestones/{milestoneId}/evidence", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("milestoneEtag", etag);
+}
+%}
+
+
+### Project: POST /api/v1/projects/{projectId}/activities/{activityId}/evidence
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/activities/{{activityId}}/evidence
+Authorization: Bearer {{researcherToken}}
+If-Match: {{activityEtag}}
+Content-Type: application/json
+
+{
+  "documentId": "{{documentId}}",
+  "documentVersion": 1,
+  "description": "Calibration evidence"
+}
+
+> {%
+client.test("Project: POST /api/v1/projects/{projectId}/activities/{activityId}/evidence", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("activityEtag", etag);
+}
+%}
+
+
+### Project: POST /api/v1/projects/{projectId}/milestones/{milestoneId}/evidence
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/milestones/{{milestoneId}}/evidence
+Authorization: Bearer {{researcherToken}}
+If-Match: {{milestoneEtag}}
+Content-Type: application/json
+
+{
+  "documentId": "{{documentId}}",
+  "documentVersion": 1,
+  "description": "Milestone evidence"
+}
+
+> {%
+client.test("Project: POST /api/v1/projects/{projectId}/milestones/{milestoneId}/evidence", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("milestoneEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/final-report
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/final-report
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/final-report", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("reportEtag", etag);
+}
+%}
+
+
+### Project: PUT /api/v1/projects/{projectId}/final-report
+# First PUT uses projectEtag as reportEtag; subsequent PUT uses GET final-report ETag. Requires Document and delegation.
+PUT {{baseUrl}}/api/v1/projects/{{projectId}}/final-report
+Authorization: Bearer {{researcherToken}}
+If-Match: {{reportEtag}}
+Content-Type: application/json
+
+{
+  "documentId": "{{documentId}}",
+  "documentVersion": 1
+}
+
+> {%
+client.test("Project: PUT /api/v1/projects/{projectId}/final-report", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("reportEtag", etag);
+}
+%}
+
+
+### Project: POST /api/v1/projects/{projectId}/final-report/submission
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/final-report/submission
+Authorization: Bearer {{researcherToken}}
+If-Match: {{reportEtag}}
+
+> {%
+client.test("Project: POST /api/v1/projects/{projectId}/final-report/submission", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("reportEtag", etag);
+}
+%}
+
+
+### Project: POST /api/v1/projects/{projectId}/final-report/reopening
+POST {{baseUrl}}/api/v1/projects/{{projectId}}/final-report/reopening
+Authorization: Bearer {{researcherToken}}
+If-Match: {{reportEtag}}
+Content-Type: application/json
+
+{
+  "reason": "Revise report after review"
+}
+
+> {%
+client.test("Project: POST /api/v1/projects/{projectId}/final-report/reopening", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("reportEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/publications
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/publications
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/publications", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("projectEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/projects/{projectId}/publications/{publicationId}
+GET {{baseUrl}}/api/v1/projects/{{projectId}}/publications/{{publicationId}}
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/projects/{projectId}/publications/{publicationId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("publicationEtag", etag);
+}
+%}
+
+
+### Project: PATCH /api/v1/projects/{projectId}/publications/{publicationId}
+PATCH {{baseUrl}}/api/v1/projects/{{projectId}}/publications/{{publicationId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{publicationEtag}}
+Content-Type: application/json
+
+{
+  "title": "Updated calibration dataset"
+}
+
+> {%
+client.test("Project: PATCH /api/v1/projects/{projectId}/publications/{publicationId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+if (response.status >= 200 && response.status < 300) {
+    const etag = response.headers.valueOf("ETag");
+    if (etag) client.global.set("publicationEtag", etag);
+}
+%}
+
+
+### Project: GET /api/v1/reference/publication-types
+GET {{baseUrl}}/api/v1/reference/publication-types
+Authorization: Bearer {{researcherToken}}
+
+> {%
+client.test("Project: GET /api/v1/reference/publication-types", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Identity: DELETE /api/v1/users/{userId}/deactivation
+# Refresh GET /users/{managedUserId} before changing this disposable test account.
+DELETE {{baseUrl}}/api/v1/users/{{managedUserId}}/deactivation
+Authorization: Bearer {{adminToken}}
+If-Match: {{managedUserEtag}}
+
+> {%
+client.test("Identity: DELETE /api/v1/users/{userId}/deactivation", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Identity: DELETE /api/v1/users/{userId}/roles/{roleCode}
+# Refresh GET /users/{managedUserId} before changing this disposable test account.
+DELETE {{baseUrl}}/api/v1/users/{{managedUserId}}/roles/{{roleCode}}
+Authorization: Bearer {{adminToken}}
+If-Match: {{managedUserEtag}}
+
+> {%
+client.test("Identity: DELETE /api/v1/users/{userId}/roles/{roleCode}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Proposal: DELETE /api/v1/proposals/{proposalId}
+# Only delete a disposable DRAFT; the approved workflow proposal cannot be deleted.
+DELETE {{baseUrl}}/api/v1/proposals/{{proposalId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{proposalEtag}}
+
+> {%
+client.test("Proposal: DELETE /api/v1/proposals/{proposalId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Proposal: DELETE /api/v1/proposals/{proposalId}/researchers/{userId}
+# Requires a DRAFT/CHANGES_REQUESTED proposal.
+DELETE {{baseUrl}}/api/v1/proposals/{{proposalId}}/researchers/{{collaboratorId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{proposalEtag}}
+
+> {%
+client.test("Proposal: DELETE /api/v1/proposals/{proposalId}/researchers/{userId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Proposal: DELETE /api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}
+# Requires a pending assignment.
+DELETE {{baseUrl}}/api/v1/proposals/{{proposalId}}/evaluator-assignments/{{assignmentId}}
+Authorization: Bearer {{coordinatorToken}}
+If-Match: {{assignmentEtag}}
+
+> {%
+client.test("Proposal: DELETE /api/v1/proposals/{proposalId}/evaluator-assignments/{assignmentId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Project: DELETE /api/v1/projects/{projectId}/members/{userId}
+DELETE {{baseUrl}}/api/v1/projects/{{projectId}}/members/{{memberUserId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{memberEtag}}
+
+> {%
+client.test("Project: DELETE /api/v1/projects/{projectId}/members/{userId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Project: DELETE /api/v1/projects/{projectId}/activities/{activityId}
+DELETE {{baseUrl}}/api/v1/projects/{{projectId}}/activities/{{activityId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{activityEtag}}
+
+> {%
+client.test("Project: DELETE /api/v1/projects/{projectId}/activities/{activityId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Project: DELETE /api/v1/projects/{projectId}/milestones/{milestoneId}
+DELETE {{baseUrl}}/api/v1/projects/{{projectId}}/milestones/{{milestoneId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{milestoneEtag}}
+
+> {%
+client.test("Project: DELETE /api/v1/projects/{projectId}/milestones/{milestoneId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Project: DELETE /api/v1/projects/{projectId}/activities/{activityId}/evidence/{documentId}
+DELETE {{baseUrl}}/api/v1/projects/{{projectId}}/activities/{{activityId}}/evidence/{{documentId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{activityEtag}}
+
+> {%
+client.test("Project: DELETE /api/v1/projects/{projectId}/activities/{activityId}/evidence/{documentId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Project: DELETE /api/v1/projects/{projectId}/milestones/{milestoneId}/evidence/{documentId}
+DELETE {{baseUrl}}/api/v1/projects/{{projectId}}/milestones/{{milestoneId}}/evidence/{{documentId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{milestoneEtag}}
+
+> {%
+client.test("Project: DELETE /api/v1/projects/{projectId}/milestones/{milestoneId}/evidence/{documentId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Project: DELETE /api/v1/projects/{projectId}/publications/{publicationId}
+DELETE {{baseUrl}}/api/v1/projects/{{projectId}}/publications/{{publicationId}}
+Authorization: Bearer {{researcherToken}}
+If-Match: {{publicationEtag}}
+
+> {%
+client.test("Project: DELETE /api/v1/projects/{projectId}/publications/{publicationId}", function () {
+    client.assert(response.status >= 200 && response.status < 300, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Gateway: internal endpoints are blocked
+GET {{baseUrl}}/internal/v1/authorization/check
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("Gateway: internal endpoints are blocked", function () {
+    client.assert(response.status === 404, "Unexpected HTTP status: " + response.status);
+});
+%}
+
+
+### Gateway: management endpoints are blocked on public port
+GET {{baseUrl}}/actuator/health/liveness
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("Gateway: management endpoints are blocked on public port", function () {
+    client.assert(response.status === 404, "Unexpected HTTP status: " + response.status);
+});
+%}

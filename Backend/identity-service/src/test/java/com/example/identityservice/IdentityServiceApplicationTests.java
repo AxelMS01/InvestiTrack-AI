@@ -70,6 +70,14 @@ class IdentityServiceApplicationTests {
             .authorities(Arrays.stream(scopes.split(" ")).map(s->new SimpleGrantedAuthority("SCOPE_"+s)).toArray(SimpleGrantedAuthority[]::new));
     }
     String createBody(String subject,String email) { return json.writeValueAsString(Map.of("identitySubject",subject,"email",email,"displayName","New User","roles",List.of("STUDENT"))); }
+    @Test void auditRoleCanBeAssignedWithoutGrantingOtherDomainCapabilities() throws Exception {
+        String body=json.writeValueAsString(Map.of("identitySubject","institutional|auditor","email","auditor@university.test","displayName","Institutional auditor","roles",List.of("AUDITOR")));
+        mvc.perform(post("/api/v1/users").with(as("institutional|admin")).contentType("application/json").content(body))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.roles[0]").value("AUDITOR")).andExpect(jsonPath("$.capabilities").isEmpty());
+        UUID auditor=repo.subject("institutional|auditor").orElseThrow().id();
+        var auditWorkload=jwt().jwt(j->j.subject("audit-service").audience(List.of("identity-service")).claim("client_id","audit-service")).authorities(new SimpleGrantedAuthority("SCOPE_identity:status"));
+        mvc.perform(get("/internal/v1/users/"+auditor+"/status").with(auditWorkload)).andExpect(status().isOk()).andExpect(jsonPath("$.roles[0]").value("AUDITOR"));
+    }
     @Test void anonymousRequestsAreRejectedWithProblemDetailsAndCorrelation() throws Exception {
         mvc.perform(get("/api/v1/me").header("X-Correlation-ID","test-correlation"))
             .andExpect(status().isUnauthorized()).andExpect(content().contentType("application/problem+json"))

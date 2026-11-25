@@ -115,6 +115,7 @@ reporting	GET	/api/v1/report-jobs
 reporting	GET	/api/v1/report-jobs/{jobId}
 reporting	DELETE	/api/v1/report-jobs/{jobId}
 reporting	POST	/api/v1/report-jobs/{jobId}/download-authorization
+reporting	GET	/api/v1/report-jobs/{jobId}/content
 ai	GET	/api/v1/ai/conversations
 ai	POST	/api/v1/ai/conversations
 ai	GET	/api/v1/ai/conversations/{conversationId}
@@ -131,6 +132,7 @@ audit	GET	/api/v1/audit-events/{auditEventId}
 audit	POST	/api/v1/audit-export-jobs
 audit	GET	/api/v1/audit-export-jobs/{jobId}
 audit	POST	/api/v1/audit-export-jobs/{jobId}/download-authorization
+audit	GET	/api/v1/audit-export-jobs/{jobId}/content
 notification	GET	/api/v1/notifications
 notification	GET	/api/v1/notifications/unread-count
 notification	GET	/api/v1/notifications/{notificationId}

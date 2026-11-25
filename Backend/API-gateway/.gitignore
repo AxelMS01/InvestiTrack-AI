@@ -34,3 +34,4 @@ build/
 
 .env
 .env.*
+http-client.private.env.json

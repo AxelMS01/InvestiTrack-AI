@@ -1,0 +1,45 @@
+@base = http://localhost:8087
+@userToken = replace-with-admin-or-auditor-user-token
+@workloadToken = replace-with-document-service-workload-token
+@auditEventId = 3d4caa0a-967a-4b59-a5a9-1f67a4ff271a
+@jobId = replace-after-export-creation
+
+### Trusted producer fallback; never routed through the public gateway
+POST {{base}}/internal/v1/audit-events
+Authorization: Bearer {{workloadToken}}
+Content-Type: application/json
+
+{
+  "eventId": "{{auditEventId}}",
+  "occurredAt": "2026-11-23T20:00:00Z",
+  "actor": {"type": "USER", "id": "ca62b387-45fd-4e97-8940-1b061dcac234"},
+  "action": "DOCUMENT_DOWNLOADED",
+  "resource": {"type": "DOCUMENT", "id": "a6bca6c5-bf88-435c-bdc6-1a28d6b300d3"},
+  "outcome": "SUCCESS",
+  "correlationId": "document-review-1",
+  "metadata": {"documentVersion": 1, "projectId": "141dff33-5f73-4eec-8f33-8a577f239204"}
+}
+
+### Search (follow page.nextCursor)
+GET {{base}}/api/v1/audit-events?resourceType=DOCUMENT&limit=25
+Authorization: Bearer {{userToken}}
+
+### Single record
+GET {{base}}/api/v1/audit-events/{{auditEventId}}
+Authorization: Bearer {{userToken}}
+
+### Asynchronous CSV export; body filters use the same search fields without limit/cursor
+POST {{base}}/api/v1/audit-export-jobs
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+Idempotency-Key: document-audit-export-1
+
+{"filters":{"resourceType":"DOCUMENT","from":"2026-11-23","to":"2026-11-23"}}
+
+### Poll until COMPLETED
+GET {{base}}/api/v1/audit-export-jobs/{{jobId}}
+Authorization: Bearer {{userToken}}
+
+### Follow the returned URL with the same user's bearer token within 60 seconds
+POST {{base}}/api/v1/audit-export-jobs/{{jobId}}/download-authorization
+Authorization: Bearer {{userToken}}
