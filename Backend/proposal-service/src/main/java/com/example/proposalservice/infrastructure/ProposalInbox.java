@@ -32,7 +32,7 @@ public class ProposalInbox {
                 for(String id:List.of("proposalId","approvalId","principalResearcherId","coordinatorId"))UUID.fromString(data.get(id).toString());
                 require("APPROVED".equals(data.get("status")),400,"INVALID_EVENT","ProjectCreated must describe initial APPROVED state.");java.time.LocalDate.parse(data.get("plannedEndDate").toString());
             }else {require(integer(data.get("accessVersion"))>0,400,"INVALID_EVENT","Invalid access version.");Instant.parse(data.get("deletedAt").toString());}
-        }catch(ApiException e){throw e;}catch(RuntimeException e){throw new ApiException(400,"INVALID_EVENT","The event does not match its contract.");}
+        }catch(ApiException e){throw e;}catch(IllegalArgumentException|NullPointerException|ClassCastException|java.time.DateTimeException|tools.jackson.core.JacksonException e){throw new ApiException(400,"INVALID_EVENT","The event does not match its contract.");}
         UUID id=UUID.fromString(event.get("eventId").toString());store.lock("proposal-incoming:"+id);
         var old=store.one("select payload from proposal_incoming_event where id=:id",fields("id",id));
         if(old.isPresent()){require(store.json().readTree(store.json().writeValueAsString(old.get().get("payload"))).equals(store.json().readTree(store.json().writeValueAsString(event))),409,"EVENT_CONFLICT","The event ID has contradictory contents.");return;}
