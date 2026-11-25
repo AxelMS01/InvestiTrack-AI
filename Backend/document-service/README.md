@@ -1,10 +1,10 @@
 # Document Service
 
-Java 21 / Spring Boot 4.1.2, matching the implemented sibling services. Owns document metadata in PostgreSQL and document bodies in a private S3-compatible bucket. The architecture's Java 21 baseline is retained; Boot 4 and JDBC follow this repository rather than introducing a different Boot/JPA stack.
+Java 25 / Spring Boot 4.1.2, matching the implemented sibling services. Owns document metadata in PostgreSQL and document bodies in a private S3-compatible bucket. The architecture's Java 25 baseline is retained; Boot 4 and JDBC follow this repository rather than introducing a different Boot/JPA stack.
 
 ## Run
 
-Copy `.env.example` to `.env`, fill credentials and export its variables in your shell. Spring does not automatically load `.env` files. Use Java 21, then `./mvnw spring-boot:run`. The default port is 8084. Flyway creates only this service's tables in its dedicated database.
+Copy `.env.example` to `.env`, fill credentials and export its variables in your shell. Spring does not automatically load `.env` files. Use Java 25, then `./mvnw spring-boot:run`. The default port is 8084. Flyway creates only this service's tables in its dedicated database.
 
 For Docker, copy `.env.example` to `.env.docker`, set `DATABASE_URL=jdbc:postgresql://document-postgres:5432/document_db`, use network hostnames for Identity, Project, RabbitMQ and S3, and set the browser-reachable `S3_PUBLIC_ENDPOINT`. Run `docker compose --env-file .env.docker up --build` on the shared `investitrack` network. S3, the IdP, Identity, Project and RabbitMQ are shared infrastructure and are not created by this compose file.
 

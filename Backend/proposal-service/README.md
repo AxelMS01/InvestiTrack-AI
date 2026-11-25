@@ -1,6 +1,6 @@
 # Proposal & Evaluation Service
 
-Java 21 / Spring Boot 4.1.2 service implementing the Proposal/Evaluation endpoints in
+Java 25 / Spring Boot 4.1.2 service implementing the Proposal/Evaluation endpoints in
 [the API contract](../.agents/api-endpoints.md) and the approval, ownership, security and event contracts in
 [service-contracts.md](../.agents/service-contracts.md). The existing JPA models and migrations V1–V4 are retained;
 V5 adds integration state and V6 quarantines unsafe legacy unpublished events. PostgreSQL owns all domain,
@@ -27,7 +27,7 @@ Docker network. Recreate containers after changing their environment files.
 For host execution, copy `.env.example` to `.env`, configure its values and explicitly load it:
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
 set -a
 source .env
 set +a

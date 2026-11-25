@@ -1,6 +1,6 @@
 # Dashboard & Reporting Service
 
-Java 21 / Spring Boot 4.1.2 service implementing the Dashboard & Reporting contracts in
+Java 25 / Spring Boot 4.1.2 service implementing the Dashboard & Reporting contracts in
 [the architecture](../.agents/backend-architecture.md), [API endpoints](../.agents/api-endpoints.md),
 and [service contracts](../.agents/service-contracts.md). It follows the existing Project service baseline.
 The default port is `8085`; the gateway uses `REPORTING_SERVICE_URL`.
@@ -13,7 +13,7 @@ The OpenAPI contract is [openapi.json](src/main/resources/openapi.json). Regener
 ## Run
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
 cp .env.example .env
 # Configure the database, issuer and workload credentials.
 set -a
@@ -142,7 +142,7 @@ attachment filename. Disable query-string logging at proxies to avoid logging do
 ## Verification
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
 ./mvnw verify
 ```
 

@@ -1,6 +1,6 @@
 # Project Execution Service
 
-Java 21 / Spring Boot 4.1.2 service for the Project Execution contract in
+Java 25 / Spring Boot 4.1.2 service for the Project Execution contract in
 [`../.agents/api-endpoints.md`](../.agents/api-endpoints.md), with the ownership and integration rules in
 [`service-contracts.md`](../.agents/service-contracts.md). It owns its PostgreSQL database and project
 memberships. The gateway remains the public entry point.
@@ -13,7 +13,7 @@ reopening, publications and authors, calculated progress, and history. It additi
 ## Build and run
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
 ./mvnw verify
 ```
 

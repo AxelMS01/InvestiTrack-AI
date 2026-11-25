@@ -1,6 +1,6 @@
 # Identity & Access Service
 
-Java 21 / Spring Boot 4.1.2 service implementing the Identity endpoints in `../.agents/api-endpoints.md`, the PostgreSQL model in `database-schema.md`, and the newer ownership/security/event rules in `service-contracts.md`. The existing Gradle and Spring Data JDBC baseline is retained. PostgreSQL owns profiles, account state, role assignments, global capabilities, status history, idempotency records, and the transactional outbox. No passwords or tokens are stored in the database.
+Java 25 / Spring Boot 4.1.2 service implementing the Identity endpoints in `../.agents/api-endpoints.md`, the PostgreSQL model in `database-schema.md`, and the newer ownership/security/event rules in `service-contracts.md`. The existing Gradle and Spring Data JDBC baseline is retained. PostgreSQL owns profiles, account state, role assignments, global capabilities, status history, idempotency records, and the transactional outbox. No passwords or tokens are stored in the database.
 
 ## Run
 

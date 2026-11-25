@@ -1,13 +1,13 @@
 # API Gateway
 
 Public entry point for the REST contract in [`../.agents/api-endpoints.md`](../.agents/api-endpoints.md).
-Java 21, Spring Boot 3.5 and Spring Cloud Gateway WebFlux. Boot 3.x follows the documented baseline;
+Java 25, Spring Boot 3.5 and Spring Cloud Gateway WebFlux. Boot 3.x follows the documented baseline;
 Spring Cloud 2025.0 is the compatible release train. This service has no database or domain workflows.
 
 ## Run
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
 ./mvnw test
 ./mvnw spring-boot:run
 ```

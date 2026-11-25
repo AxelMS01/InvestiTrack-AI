@@ -1,6 +1,6 @@
 # Audit Service
 
-Java 21 / Spring Boot 4.1.2, following the implemented domain services. Owns `audit_db`: append-only audit history and durable, private CSV export jobs. Default port: 8087. Public routes are already mapped by the gateway; the export content route is included in this change. The architecture's Java 21 baseline is retained, with the repository's Boot 4/JDBC conventions.
+Java 25 / Spring Boot 4.1.2, following the implemented domain services. Owns `audit_db`: append-only audit history and durable, private CSV export jobs. Default port: 8087. Public routes are already mapped by the gateway; the export content route is included in this change. The architecture's Java 25 baseline is retained, with the repository's Boot 4/JDBC conventions.
 
 ## Run and database permissions
 
