@@ -11,6 +11,12 @@ export const publicRoutes: RouteObject[] = [
         lazy: async () => ({ Component: (await import('../features/auth/login-page')).LoginPage }),
       },
       { path: '/sesion-expirada', element: <SessionExpiredPage /> },
+      {
+        path: '/auth/callback',
+        lazy: async () => ({
+          Component: (await import('../features/auth/callback-page')).CallbackPage,
+        }),
+      },
     ],
   },
 ];

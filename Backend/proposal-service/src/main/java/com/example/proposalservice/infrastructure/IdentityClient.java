@@ -16,6 +16,8 @@ import static com.example.proposalservice.api.ApiException.require;
 public class IdentityClient {
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofMillis(300)).followRedirects(HttpClient.Redirect.NEVER).build();
     private final ObjectMapper json;
+    @org.springframework.beans.factory.annotation.Autowired
+    private WorkloadTokens workloadTokens;
     private final String identity,identityToken,document;
     public IdentityClient(ObjectMapper json,@Value("${proposal.owners.identity.url}") String identity,
         @Value("${proposal.owners.identity.token}") String token,@Value("${proposal.owners.document.url}") String document) {
@@ -33,8 +35,8 @@ public class IdentityClient {
         }catch(ApiException e){throw e;}catch(RuntimeException e){throw unavailable();}
     }
     public void active(UUID user,String role) {
-        require(!identityToken.isBlank(),503,"DEPENDENCY_UNAVAILABLE","Identity workload credentials are required.");
-        var profile=get(identity,"/internal/v1/users/"+user+"/status",identityToken,false);
+        String token = identityToken.isBlank() ? (workloadTokens == null ? missingToken() : workloadTokens.accessToken()) : identityToken;
+        var profile=get(identity,"/internal/v1/users/"+user+"/status",token,false);
         require(user.toString().equals(Objects.toString(profile.get("userId")))&&profile.get("active") instanceof Boolean&&profile.get("roles") instanceof List<?>,503,"DEPENDENCY_UNAVAILABLE","Identity returned an invalid account status.");
         require(Boolean.TRUE.equals(profile.get("active")),422,"INACTIVE_USER","The selected account must be active.");
         if(role!=null)require(((List<?>)profile.get("roles")).contains(role),422,"ROLE_REQUIRED","The selected account requires role "+role+".");
@@ -69,4 +71,6 @@ public class IdentityClient {
         }catch(ApiException e){throw e;}catch(InterruptedException e){Thread.currentThread().interrupt();throw unavailable();}catch(Exception e){throw unavailable();}
     }
     public static ApiException unavailable(){return new ApiException(503,"DEPENDENCY_UNAVAILABLE","A required service is unavailable or returned invalid data.");}
+
+    private static String missingToken() { throw IdentityClient.unavailable(); }
 }

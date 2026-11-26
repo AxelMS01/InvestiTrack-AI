@@ -2,6 +2,8 @@
 
 This contract defines the external and internal endpoints for the Spring microservices described in `backend-architecture.md`.
 
+The AI and Notification sections describe planned endpoints. The local Gateway keeps those methods and paths registered with `DISABLED_ROUTE_OWNERS=ai,notification` and responds with `503 FEATURE_UNAVAILABLE` for authenticated requests. Enable an owner only when its backend is available and its service URL is configured. The [frontend integration matrix](../../docs/matriz-integracion-frontend.md) lists the endpoints used by current screens.
+
 ## 1. API conventions
 
 ### Base paths

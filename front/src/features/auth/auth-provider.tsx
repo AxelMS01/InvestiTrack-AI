@@ -8,10 +8,23 @@ import { sessionKey, useSession } from '../../api/auth.queries';
 import { AuthContext } from './auth-context';
 import { canCoordinateUnit } from './access-policy';
 import { userRoles, type Role } from '../../types/user';
+import { sessionExpiredEvent } from '../../api/oidc';
+import { ApiError } from '../../api/http-client';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient();
   const session = useSession();
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    if (config.demo) return;
+    const expire = () => {
+      setExpired(true);
+      client.removeQueries({ predicate: (query) => query.queryKey[0] !== 'session' });
+      client.setQueryData(sessionKey, null);
+    };
+    window.addEventListener(sessionExpiredEvent, expire);
+    return () => window.removeEventListener(sessionExpiredEvent, expire);
+  }, [client]);
   useEffect(() => {
     if (!config.demo) return;
     function onStorage(event: StorageEvent) {
@@ -61,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (user && userRoles(user).includes(role)) setSelection({ id: user.id, role });
         },
         loading: session.isPending,
-        error: session.error,
+        error: expired && !user ? new ApiError(401, 'La sesión expiró.') : session.error,
         simulatorEnabled: config.demo,
         switching: switcher.isPending,
         switchError: switcher.error,

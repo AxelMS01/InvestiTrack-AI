@@ -17,6 +17,8 @@ import static com.example.projectservice.api.ApiException.*;
 public class RemoteServices {
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofMillis(300)).followRedirects(HttpClient.Redirect.NEVER).build();
     private final ObjectMapper json;
+    @org.springframework.beans.factory.annotation.Autowired
+    private WorkloadTokens workloadTokens;
     private final Map<String,String> urls,tokens;
     private final String exchangeUri,exchangeClient,exchangeSecret,documentAudience;
     public RemoteServices(ObjectMapper json,
@@ -95,7 +97,11 @@ public class RemoteServices {
         }catch(InterruptedException e){Thread.currentThread().interrupt();throw unavailable();}catch(Exception e){throw unavailable();}
     }
     private Map<String,Object> workload(String owner,String method,String path,Object body) {
-        var token=tokens.get(owner);if(token==null||token.isBlank())throw unavailable();
+        var token = tokens.get(owner);
+        if (token == null || token.isBlank()) {
+            if (!Set.of("identity", "proposal").contains(owner)) throw unavailable();
+            token = (workloadTokens == null ? missingToken() : workloadTokens.accessToken());
+        }
         return call(owner,method,path,body,token,false);
     }
     @SuppressWarnings("unchecked")
@@ -118,4 +124,6 @@ public class RemoteServices {
         }catch(ApiException e){throw e;}catch(InterruptedException e){Thread.currentThread().interrupt();throw unavailable();}catch(Exception e){throw unavailable();}
     }
     private static String encode(String value){return URLEncoder.encode(value,java.nio.charset.StandardCharsets.UTF_8);}
+
+    private static String missingToken() { throw com.example.projectservice.api.ApiException.unavailable(); }
 }

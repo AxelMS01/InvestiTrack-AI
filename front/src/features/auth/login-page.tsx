@@ -1,8 +1,5 @@
 import { Button } from '../../components/button';
-import { Input } from '../../components/input';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
@@ -10,7 +7,8 @@ import { AsyncState } from '../../components/ui';
 import { config } from '../../lib/config';
 import { authApi, demoProfiles } from '../../api/auth.api';
 import { useSession, sessionKey } from '../../api/auth.queries';
-import { credentialsSchema, roleLabels, type Credentials, type User } from './model';
+import { roleLabels, type User } from './model';
+import { beginLogin } from '../../api/oidc';
 
 export function LoginPage() {
   const [role, setRole] = useState('admin');
@@ -18,11 +16,6 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const session = useSession();
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<Credentials>({ resolver: zodResolver(credentialsSchema) });
   const state: unknown = location.state;
   const from =
     typeof state === 'object' &&
@@ -40,7 +33,7 @@ export function LoginPage() {
     client.setQueryData(sessionKey, user);
     void navigate(from, { replace: true });
   }
-  const login = useMutation({ mutationFn: authApi.login, onSuccess: complete });
+  const login = useMutation({ mutationFn: () => beginLogin(from) });
   const demo = useMutation({ mutationFn: authApi.demoLogin, onSuccess: complete });
   if (session.isPending) return <AsyncState loading />;
   if (session.data && !session.error) return <Navigate to={from} replace />;
@@ -83,58 +76,14 @@ export function LoginPage() {
           </Button>
         </div>
       ) : (
-        <form
-          className="mt-8 space-y-5"
-          onSubmit={handleSubmit((values) => login.mutate(values))}
-          noValidate
+        <Button
+          className="btn-primary mt-8 w-full justify-center"
+          disabled={login.isPending}
+          onClick={() => login.mutate()}
         >
-          <div>
-            <label className="field-label" htmlFor="email">
-              Correo institucional
-            </label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="username"
-              className="input"
-              {...register('email')}
-              aria-invalid={Boolean(errors.email)}
-              aria-describedby={errors.email ? 'email-error' : undefined}
-            />
-            {errors.email && (
-              <p id="email-error" className="field-error">
-                {errors.email.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="field-label" htmlFor="password">
-              Contraseña
-            </label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              className="input"
-              {...register('password')}
-              aria-invalid={Boolean(errors.password)}
-              aria-describedby={errors.password ? 'password-error' : undefined}
-            />
-            {errors.password && (
-              <p id="password-error" className="field-error">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-          <Button
-            type="submit"
-            className="btn-primary w-full justify-center"
-            disabled={login.isPending}
-          >
-            {login.isPending ? 'Ingresando…' : 'Iniciar sesión'}
-            <ArrowRight size={16} />
-          </Button>
-        </form>
+          Iniciar sesión con Keycloak
+          <ArrowRight size={16} />
+        </Button>
       )}
       {error && (
         <p role="alert" className="field-error mt-4">

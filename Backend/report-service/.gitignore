@@ -34,5 +34,6 @@ build/
 
 .env
 .env.docker
+!.env.docker.example
 
 __pycache__/

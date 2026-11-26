@@ -1,0 +1,345 @@
+{
+  "realm": "investitrack",
+  "enabled": true,
+  "displayName": "InvestiTrack",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "sslRequired": "none",
+  "roles": {
+    "realm": [
+      {
+        "name": "ADMIN"
+      },
+      {
+        "name": "COORDINATOR"
+      },
+      {
+        "name": "RESEARCHER"
+      },
+      {
+        "name": "EVALUATOR"
+      },
+      {
+        "name": "STUDENT"
+      },
+      {
+        "name": "AUDITOR"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "investitrack-web",
+      "name": "InvestiTrack local frontend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:8080/login"
+      },
+      "protocolMappers": [
+        {
+          "name": "identity-subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "config": {
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "research-platform-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "institutional-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "investitrack-dev-cli",
+      "name": "Local development smoke tests only",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "identity-subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "config": {
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "research-platform-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "institutional-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "proposal-service",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${PROPOSAL_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "identity:status"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "sub",
+            "claim.value": "proposal-service",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "client_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "client_id",
+            "claim.value": "proposal-service",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "identity-service",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "identity-service",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "project-execution-service",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${PROJECT_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "identity:status",
+        "proposal:project-integration"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "sub",
+            "claim.value": "project-execution-service",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "client_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "client_id",
+            "claim.value": "project-execution-service",
+            "jsonType.label": "String",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "identity-service",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "identity-service",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "proposal-service",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "proposal-service",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "identity:status",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    },
+    {
+      "name": "proposal:project-integration",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    }
+  ],
+  "users": [
+    {
+      "id": "081946d0-f61e-48cb-a461-d1b891dccc60",
+      "username": "admin",
+      "firstName": "Admin",
+      "lastName": "Local",
+      "email": "admin@investitrack.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "ADMIN"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LOCAL_ADMIN_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "31ac56ad-e2b9-4f70-9ca7-3a7ad6264a85",
+      "username": "investigador",
+      "firstName": "Investigador",
+      "lastName": "Local",
+      "email": "investigador@investitrack.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "RESEARCHER"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LOCAL_RESEARCHER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "1449f648-4be2-4271-abe8-151270200ac7",
+      "username": "coordinacion",
+      "firstName": "Coordinacion",
+      "lastName": "Local",
+      "email": "coordinacion@investitrack.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "COORDINATOR"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LOCAL_COORDINATOR_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "1efc5006-1cab-45ba-b721-51b48c6f3c0e",
+      "username": "evaluador",
+      "firstName": "Evaluador",
+      "lastName": "Local",
+      "email": "evaluador@investitrack.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "EVALUATOR"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LOCAL_EVALUATOR_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "df2fe117-f7d7-4e67-a66e-be494afb5c5c",
+      "username": "observador",
+      "firstName": "Observador",
+      "lastName": "Local",
+      "email": "observador@investitrack.test",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "RESEARCHER"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LOCAL_OBSERVER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

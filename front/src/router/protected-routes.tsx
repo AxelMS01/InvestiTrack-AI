@@ -7,6 +7,7 @@ import type { Role } from '../types';
 import { ForbiddenPage } from '../features/auth/forbidden-page';
 import { DemoOnly } from '../features/shared/workflow-ui';
 import { NotFoundPage } from './status-pages';
+import { config } from '../lib/config';
 
 type Page = () => Promise<{ Component: ComponentType }>;
 function guarded(path: string, capability: Capability, lazy: Page, demo = false): RouteObject {
@@ -33,8 +34,13 @@ function guarded(path: string, capability: Capability, lazy: Page, demo = false)
 }
 
 const dashboard = async () => ({
-  Component: (await import('../features/dashboard/dashboard-page')).DashboardPage,
+  Component: config.demo
+    ? (await import('../features/dashboard/dashboard-page')).DashboardPage
+    : (await import('../features/dashboard/institutional-dashboard-page'))
+        .InstitutionalDashboardPage,
 });
+const institutionalProposals = () => import('../features/proposals/institutional-pages');
+const institutionalProjects = () => import('../features/projects/institutional-pages');
 const proposalForm = () => import('../features/proposals/proposal-create-page');
 const proposalDetail = () => import('../features/proposals/proposal-detail-page');
 const evaluations = () => import('../features/evaluations/evaluations-page');
@@ -169,47 +175,57 @@ export const protectedRoutes: RouteObject[] = [
           { path: 'perfil', lazy: async () => ({ Component: (await profile()).ProfilePage }) },
           {
             path: 'notificaciones',
-            lazy: async () => ({ Component: (await profile()).NotificationsPage }),
+            lazy: async () => {
+              const { NotificationsPage } = await profile();
+              return {
+                Component: () => (
+                  <DemoOnly>
+                    <NotificationsPage />
+                  </DemoOnly>
+                ),
+              };
+            },
           },
           guarded('propuestas', 'proposal:read', async () => ({
-            Component: (await import('../features/proposals/proposals-page')).ProposalsPage,
+            Component: config.demo
+              ? (await import('../features/proposals/proposals-page')).ProposalsPage
+              : (await institutionalProposals()).InstitutionalProposalsPage,
           })),
-          guarded(
-            'propuestas/nueva',
-            'proposal:create',
-            async () => ({ Component: (await proposalForm()).ProposalCreatePage }),
-            true,
-          ),
+          guarded('propuestas/nueva', 'proposal:create', async () => ({
+            Component: config.demo
+              ? (await proposalForm()).ProposalCreatePage
+              : (await institutionalProposals()).InstitutionalProposalForm,
+          })),
           guarded('propuestas/:id', 'proposal:read', async () => ({
-            Component: (await proposalDetail()).ProposalDetailPage,
+            Component: config.demo
+              ? (await proposalDetail()).ProposalDetailPage
+              : (await institutionalProposals()).InstitutionalProposalPage,
           })),
-          guarded(
-            'propuestas/:id/editar',
-            'proposal:update',
-            async () => ({ Component: (await proposalForm()).ProposalEditPage }),
-            true,
-          ),
-          guarded('propuestas/:id/historial', 'proposal:read', async () => ({
-            Component: (await proposalDetail()).ProposalHistoryPage,
+          guarded('propuestas/:id/editar', 'proposal:update', async () => {
+            if (config.demo) return { Component: (await proposalForm()).ProposalEditPage };
+            const { InstitutionalProposalForm } = await institutionalProposals();
+            return { Component: () => <InstitutionalProposalForm editing /> };
+          }),
+          guarded('propuestas/:id/historial', 'proposal:read', async () => {
+            if (config.demo) return { Component: (await proposalDetail()).ProposalHistoryPage };
+            const { InstitutionalProposalPage } = await institutionalProposals();
+            return { Component: () => <InstitutionalProposalPage history /> };
+          }),
+          guarded('propuestas/:id/revision', 'proposal:submit', async () => ({
+            Component: config.demo
+              ? (await proposalDetail()).ProposalReviewPage
+              : (await institutionalProposals()).InstitutionalProposalPage,
           })),
-          guarded(
-            'propuestas/:id/revision',
-            'proposal:submit',
-            async () => ({ Component: (await proposalDetail()).ProposalReviewPage }),
-            true,
-          ),
-          guarded(
-            'evaluaciones',
-            'evaluation:read',
-            async () => ({ Component: (await evaluations()).EvaluationsPage }),
-            true,
-          ),
-          guarded(
-            'evaluaciones/asignar',
-            'evaluation:assign',
-            async () => ({ Component: (await evaluations()).EvaluationAssignmentPage }),
-            true,
-          ),
+          guarded('evaluaciones', 'evaluation:read', async () => {
+            if (config.demo) return { Component: (await evaluations()).EvaluationsPage };
+            const { InstitutionalProposalsPage } = await institutionalProposals();
+            return { Component: () => <InstitutionalProposalsPage evaluations /> };
+          }),
+          guarded('evaluaciones/asignar', 'evaluation:assign', async () => ({
+            Component: config.demo
+              ? (await evaluations()).EvaluationAssignmentPage
+              : (await institutionalProposals()).InstitutionalProposalsPage,
+          })),
           guarded(
             'evaluaciones/:id/rubrica',
             'evaluation:create',
@@ -229,10 +245,14 @@ export const protectedRoutes: RouteObject[] = [
             true,
           ),
           guarded('proyectos', 'project:read', async () => ({
-            Component: (await import('../features/projects/projects-page')).ProjectsPage,
+            Component: config.demo
+              ? (await import('../features/projects/projects-page')).ProjectsPage
+              : (await institutionalProjects()).InstitutionalProjectsPage,
           })),
           guarded('proyectos/:id', 'project:read', async () => ({
-            Component: (await import('../features/projects/project-detail-page')).ProjectDetailPage,
+            Component: config.demo
+              ? (await import('../features/projects/project-detail-page')).ProjectDetailPage
+              : (await institutionalProjects()).InstitutionalProjectDetailPage,
           })),
           guarded(
             'proyectos/nuevo',

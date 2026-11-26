@@ -4,6 +4,8 @@ Versión de diseño: 1.0. Estado: especificación propuesta para implementación
 
 Este documento complementa [la arquitectura](backend-architecture.md), [los endpoints](api-endpoints.md) y [el esquema de datos](database-schema.md). Define responsabilidades, mensajes, respuestas y comportamiento ante fallos. Las decisiones nuevas se identifican al final para incorporarlas a esos documentos antes de implementar.
 
+El perfil local incluye Identity, Proposal, Project, Document, Reporting y Audit. AI Assistant y Notification siguen planificados. Proposal y Project obtienen y renuevan JWT con `client_credentials` de Keycloak. `proposal-service` usa la audiencia `identity-service` y el alcance `identity:status`. `project-execution-service` usa ese permiso para validar miembros y la audiencia `proposal-service` con `proposal:project-integration` para leer el snapshot y reconciliar la referencia. Las operaciones con el usuario usan su JWT. El gateway omite `/internal/v1` de la allowlist pública.
+
 ## 1. Autoridad y dependencias
 
 | Proveedor | Es autoridad sobre | Consumidores y contrato |

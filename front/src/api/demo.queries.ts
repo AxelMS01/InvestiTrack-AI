@@ -14,7 +14,7 @@ export function useDemoQuery<T>(
   return useQuery({
     queryKey: ['workspace', user ? subjectKey(user) : 'anonymous', ...key],
     queryFn: read,
-    enabled: enabled && Boolean(user),
+    enabled: config.demo && enabled && Boolean(user),
     retry: false,
   });
 }

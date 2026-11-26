@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { config } from '../lib/config';
-import { request } from './http-client';
+import { ApiError, request } from './http-client';
 import { projectSchema, type Project } from '../types/project';
 import { demoProjects } from '../demo/projects';
 
@@ -11,5 +11,8 @@ export const projectsApi = {
     config.demo
       ? demoProjects.detail(id)
       : request(`/projects/${encodeURIComponent(id)}`, projectSchema, { signal }),
-  create: async (proposalId: string): Promise<Project> => demoProjects.convert(proposalId),
+  create: async (proposalId: string): Promise<Project> => {
+    if (!config.demo) throw new ApiError(503, 'El proyecto se genera al aprobar la propuesta.');
+    return demoProjects.convert(proposalId);
+  },
 };

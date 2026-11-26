@@ -81,6 +81,7 @@ class ApiGatewayApplicationTests {
         registry.add("gateway.rate-limit.requests", () -> 1000);
         registry.add("management.server.port", () -> MANAGEMENT_PORT);
         SERVICES.forEach((owner, server) -> registry.add("gateway.services." + owner, () -> "http://127.0.0.1:" + server.port()));
+        registry.add("gateway.disabled-owners", () -> "");
     }
 
     @LocalServerPort int port;

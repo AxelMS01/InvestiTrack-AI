@@ -1,0 +1,393 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Copy .env.integration.example to .env.integration and set secrets}
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD}
+      PROPOSAL_DB_PASSWORD: ${PROPOSAL_DB_PASSWORD:?Set PROPOSAL_DB_PASSWORD}
+      PROJECT_DB_PASSWORD: ${PROJECT_DB_PASSWORD:?Set PROJECT_DB_PASSWORD}
+      DOCUMENT_DB_PASSWORD: ${DOCUMENT_DB_PASSWORD:?Set DOCUMENT_DB_PASSWORD}
+      REPORTING_DB_PASSWORD: ${REPORTING_DB_PASSWORD:?Set REPORTING_DB_PASSWORD}
+      AUDIT_DB_PASSWORD: ${AUDIT_DB_PASSWORD:?Set AUDIT_DB_PASSWORD}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init/001-databases.sh:/docker-entrypoint-initdb.d/001-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [backend]
+    restart: unless-stopped
+    mem_limit: 512m
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks: [backend]
+
+    restart: unless-stopped
+    mem_limit: 768m
+
+  minio:
+    image: investitrack/minio-local
+    build: ./infra/minio
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [backend]
+
+    ports: ["127.0.0.1:9000:9000"]
+    restart: unless-stopped
+    mem_limit: 512m
+
+  minio-init:
+    image: investitrack/minio-local
+    pull_policy: never
+    depends_on:
+      minio: {condition: service_healthy}
+    entrypoint: /bin/sh
+    command: -c "mc alias set local http://minio:9000 \"$${MINIO_ROOT_USER}\" \"$${MINIO_ROOT_PASSWORD}\" && mc mb --ignore-existing local/$${S3_BUCKET}"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      S3_BUCKET: ${S3_BUCKET:-documents}
+    networks: [backend]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:?Set KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?Set KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_HOSTNAME: http://localhost:8080
+      KC_PROXY_HEADERS: xforwarded
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD}
+      LOCAL_ADMIN_PASSWORD: ${LOCAL_ADMIN_PASSWORD:?Set LOCAL_ADMIN_PASSWORD}
+      LOCAL_RESEARCHER_PASSWORD: ${LOCAL_RESEARCHER_PASSWORD:?Set LOCAL_RESEARCHER_PASSWORD}
+      LOCAL_COORDINATOR_PASSWORD: ${LOCAL_COORDINATOR_PASSWORD:?Set LOCAL_COORDINATOR_PASSWORD}
+      LOCAL_EVALUATOR_PASSWORD: ${LOCAL_EVALUATOR_PASSWORD:?Set LOCAL_EVALUATOR_PASSWORD}
+      LOCAL_OBSERVER_PASSWORD: ${LOCAL_OBSERVER_PASSWORD:?Set LOCAL_OBSERVER_PASSWORD}
+      PROPOSAL_CLIENT_SECRET: ${PROPOSAL_CLIENT_SECRET:?Set PROPOSAL_CLIENT_SECRET}
+      PROJECT_CLIENT_SECRET: ${PROJECT_CLIENT_SECRET:?Set PROJECT_CLIENT_SECRET}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    volumes:
+      - ./infra/keycloak/investitrack-realm.json:/opt/keycloak/data/import/investitrack-realm.json:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/8080; printf 'GET /realms/investitrack/.well-known/openid-configuration HTTP/1.0\r\nHost: localhost:8080\r\n\r\n' >&3; read -r status <&3; [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 4s
+      retries: 35
+    networks: [backend]
+    restart: unless-stopped
+    mem_limit: 1152m
+
+  identity-service:
+    build: ./Backend/identity-service
+    environment:
+      PORT: 8081
+      DATABASE_URL: jdbc:postgresql://postgres:5432/identity_db
+      DATABASE_USERNAME: identity
+      DATABASE_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD}
+      OIDC_ISSUER_URI: http://localhost:8080/realms/investitrack
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/investitrack/protocol/openid-connect/certs
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-research-platform-api}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS}
+      OUTBOX_ENABLED: "true"
+      IDENTITY_BOOTSTRAP_SUBJECT: 081946d0-f61e-48cb-a461-d1b891dccc60
+      IDENTITY_BOOTSTRAP_EMAIL: admin@investitrack.test
+    depends_on:
+      postgres: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+    networks: [backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/8081; printf 'GET /actuator/health/liveness HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3; read -r status <&3; [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 4s
+      retries: 35
+    mem_limit: 640m
+
+  proposal-service:
+    build: ./Backend/proposal-service
+    environment:
+      PORT: 8082
+      DATABASE_URL: jdbc:postgresql://postgres:5432/proposal_db
+      DATABASE_USERNAME: proposal
+      DATABASE_PASSWORD: ${PROPOSAL_DB_PASSWORD:?Set PROPOSAL_DB_PASSWORD}
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/local
+      OIDC_ISSUER_URI: http://localhost:8080/realms/investitrack
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/investitrack/protocol/openid-connect/certs
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-research-platform-api}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      DOCUMENT_SERVICE_URL: http://document-service:8084
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS}
+      WORKLOAD_TOKEN_URI: http://keycloak:8080/realms/investitrack/protocol/openid-connect/token
+      WORKLOAD_CLIENT_SECRET: ${PROPOSAL_CLIENT_SECRET:?Set PROPOSAL_CLIENT_SECRET}
+      MESSAGING_ENABLED: "true"
+    depends_on:
+      postgres: {condition: service_healthy}
+      identity-service: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+    networks: [backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/8082; printf 'GET /actuator/health/liveness HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3; read -r status <&3; [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 4s
+      retries: 35
+    mem_limit: 640m
+
+  project-service:
+    build: ./Backend/project-service
+    environment:
+      PORT: 8083
+      DATABASE_URL: jdbc:postgresql://postgres:5432/project_db
+      DATABASE_USERNAME: project
+      DATABASE_PASSWORD: ${PROJECT_DB_PASSWORD:?Set PROJECT_DB_PASSWORD}
+      OIDC_ISSUER_URI: http://localhost:8080/realms/investitrack
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/investitrack/protocol/openid-connect/certs
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-research-platform-api}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      PROPOSAL_SERVICE_URL: http://proposal-service:8082
+      DOCUMENT_SERVICE_URL: http://document-service:8084
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS}
+      WORKLOAD_TOKEN_URI: http://keycloak:8080/realms/investitrack/protocol/openid-connect/token
+      WORKLOAD_CLIENT_SECRET: ${PROJECT_CLIENT_SECRET:?Set PROJECT_CLIENT_SECRET}
+      MESSAGING_ENABLED: "true"
+    depends_on:
+      postgres: {condition: service_healthy}
+      identity-service: {condition: service_healthy}
+      proposal-service: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+    networks: [backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/8083; printf 'GET /actuator/health/liveness HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3; read -r status <&3; [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 4s
+      retries: 35
+    mem_limit: 640m
+
+  document-service:
+    build: ./Backend/document-service
+    environment:
+      PORT: 8084
+      DATABASE_URL: jdbc:postgresql://postgres:5432/document_db
+      DATABASE_USERNAME: document
+      DATABASE_PASSWORD: ${DOCUMENT_DB_PASSWORD:?Set DOCUMENT_DB_PASSWORD}
+      OIDC_ISSUER_URI: http://localhost:8080/realms/investitrack
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/investitrack/protocol/openid-connect/certs
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      PROJECT_SERVICE_URL: http://project-service:8083
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-documents}
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS}
+      MESSAGING_ENABLED: "true"
+    depends_on:
+      postgres: {condition: service_healthy}
+      identity-service: {condition: service_healthy}
+      project-service: {condition: service_healthy}
+      minio: {condition: service_healthy}
+      minio-init: {condition: service_completed_successfully}
+      rabbitmq: {condition: service_healthy}
+    networks: [backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/8084; printf 'GET /actuator/health/liveness HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3; read -r status <&3; [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 4s
+      retries: 35
+    mem_limit: 640m
+
+  report-service:
+    build: ./Backend/report-service
+    environment:
+      PORT: 8085
+      DATABASE_URL: jdbc:postgresql://postgres:5432/reporting_db
+      DATABASE_USERNAME: reporting
+      DATABASE_PASSWORD: ${REPORTING_DB_PASSWORD:?Set REPORTING_DB_PASSWORD}
+      OIDC_ISSUER_URI: http://localhost:8080/realms/investitrack
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/investitrack/protocol/openid-connect/certs
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      PROJECT_SERVICE_URL: http://project-service:8083
+      PROPOSAL_SERVICE_URL: http://proposal-service:8082
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS}
+      MESSAGING_ENABLED: "true"
+    depends_on:
+      postgres: {condition: service_healthy}
+      identity-service: {condition: service_healthy}
+      project-service: {condition: service_healthy}
+      proposal-service: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+    networks: [backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/8085; printf 'GET /actuator/health/liveness HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3; read -r status <&3; [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 4s
+      retries: 35
+    mem_limit: 640m
+
+  audit-service:
+    build: ./Backend/audit-service
+    environment:
+      PORT: 8087
+      DATABASE_URL: jdbc:postgresql://postgres:5432/audit_db
+      DATABASE_USERNAME: audit
+      DATABASE_PASSWORD: ${AUDIT_DB_PASSWORD:?Set AUDIT_DB_PASSWORD}
+      OIDC_ISSUER_URI: http://localhost:8080/realms/investitrack
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/investitrack/protocol/openid-connect/certs
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS}
+      MESSAGING_ENABLED: "true"
+    depends_on:
+      postgres: {condition: service_healthy}
+      identity-service: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+    networks: [backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/8087; printf 'GET /actuator/health/liveness HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3; read -r status <&3; [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 4s
+      retries: 35
+    mem_limit: 640m
+
+  api-gateway:
+    build: ./Backend/API-gateway
+    environment:
+      PORT: 8080
+      OIDC_ISSUER_URI: http://localhost:8080/realms/investitrack
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/investitrack/protocol/openid-connect/certs
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-research-platform-api}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080}
+      DISABLED_ROUTE_OWNERS: ${DISABLED_ROUTE_OWNERS-ai,notification}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      PROPOSAL_SERVICE_URL: http://proposal-service:8082
+      PROJECT_SERVICE_URL: http://project-service:8083
+      DOCUMENT_SERVICE_URL: http://document-service:8084
+      REPORTING_SERVICE_URL: http://report-service:8085
+      AUDIT_SERVICE_URL: http://audit-service:8087
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai-service:8086}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:8088}
+      MANAGEMENT_ADDRESS: 0.0.0.0
+    depends_on:
+      identity-service: {condition: service_healthy}
+      proposal-service: {condition: service_healthy}
+      project-service: {condition: service_healthy}
+      document-service: {condition: service_healthy}
+      report-service: {condition: service_healthy}
+      audit-service: {condition: service_healthy}
+    networks: [backend, edge]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-ec", "exec 3<>/dev/tcp/127.0.0.1/9090; printf 'GET /actuator/health/liveness HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3; read -r status <&3; [[ $$status == *' 200 '* ]]"]
+      interval: 5s
+      timeout: 4s
+      retries: 35
+    mem_limit: 640m
+
+  identity-init:
+    image: python:3.13-alpine
+    command: ["python", "/opt/local/provision-users.py"]
+    environment:
+      LOCAL_ADMIN_PASSWORD: ${LOCAL_ADMIN_PASSWORD:?Set LOCAL_ADMIN_PASSWORD}
+    volumes:
+      - ./infra/keycloak/provision-users.py:/opt/local/provision-users.py:ro
+      - ./infra/keycloak/investitrack-realm.json:/opt/local/investitrack-realm.json:ro
+    depends_on:
+      identity-service: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
+    networks: [backend]
+    mem_limit: 128m
+
+  frontend:
+    build:
+      context: ./front
+      args:
+        VITE_DEMO_MODE: "false"
+        VITE_API_URL: /api/v1
+    networks: [edge]
+    restart: unless-stopped
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      frontend: {condition: service_healthy}
+      api-gateway: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
+      identity-init: {condition: service_completed_successfully}
+    ports: ["127.0.0.1:8080:80"]
+    networks: [backend, edge]
+    restart: unless-stopped
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+networks:
+  backend:
+  edge:
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  minio-data:

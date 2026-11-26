@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { config } from '../lib/config';
+import { accessToken, expireSession } from './oidc';
 
 export class ApiError extends Error {
   constructor(
@@ -16,10 +17,19 @@ export async function request<T>(
   schema: z.ZodType<T>,
   init?: RequestInit,
 ): Promise<T> {
+  const token = config.demo
+    ? undefined
+    : await accessToken().catch(() => {
+        throw new ApiError(401, 'La sesión expiró. Inicia sesión de nuevo.');
+      });
   const response = await fetch(`${config.apiUrl}${path}`, {
     ...init,
-    credentials: 'include',
-    headers: { ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...init?.headers },
+    credentials: 'omit',
+    headers: {
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   }).catch((error: unknown) => {
     if (init?.signal?.aborted) throw error;
     throw new ApiError(
@@ -28,12 +38,14 @@ export async function request<T>(
     );
   });
   if (!response.ok) {
+    if (response.status === 401 && token) expireSession();
     const messages: Record<number, string> = {
       401: 'La sesión expiró o las credenciales son incorrectas. Inicia sesión de nuevo.',
       403: 'No tienes permiso para realizar esta acción.',
       404: 'No se encontró el recurso solicitado.',
       412: 'El registro cambió. Actualiza los datos e inténtalo de nuevo.',
       422: 'Revisa los datos ingresados.',
+      503: 'El servicio no está disponible en este momento.',
       429: 'Hay demasiadas solicitudes. Inténtalo en unos momentos.',
       409: 'El registro cambió. Actualiza los datos e inténtalo de nuevo.',
     };

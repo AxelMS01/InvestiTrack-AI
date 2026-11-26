@@ -1,5 +1,11 @@
 # Backend Architecture — Research Project Management Platform
 
+## Current implementation and target design
+
+The local Compose profile contains Gateway, Identity, Proposal, Project, Document, Report and Audit. It also starts React, PostgreSQL, RabbitMQ, Keycloak and MinIO. Each service connects to its own database with its own PostgreSQL role. Keycloak has a separate database. Configurable URLs and Compose DNS resolve service names. Dynamic registration and discovery are pending.
+
+The sections below describe the target architecture, including AI Assistant, Notification and document workers. AI and Notification remain planned. Their Gateway routes are disabled by default and return a controlled `503`. See the [current inventory](../../README.md) and [frontend integration matrix](../../docs/matriz-integracion-frontend.md).
+
 ## 1. Architectural direction
 
 Use a small set of domain-oriented Spring Boot microservices behind a single API Gateway. Each service owns its data and exposes contracts through REST APIs and asynchronous domain events.

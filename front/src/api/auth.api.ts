@@ -1,14 +1,8 @@
-import { z } from 'zod';
 import { config } from '../lib/config';
 import { ApiError, request } from './http-client';
-import {
-  credentialsSchema,
-  can,
-  userSchema,
-  type Credentials,
-  type Role,
-  type User,
-} from '../features/auth/model';
+import { can, userSchema, type Role, type User } from '../features/auth/model';
+import { accessToken, endSession } from './oidc';
+import { readAll } from './institutional-workflow.api';
 import { demoUsers, readDatabase } from '../demo/database';
 export { demoUsers } from '../demo/database';
 
@@ -33,15 +27,12 @@ export const demoProfiles = demoUsers.map((user, index) => ({
 }));
 
 export const authApi = {
-  me: async (): Promise<User | null> =>
-    config.demo ? currentDemoUser() : request('/auth/me', userSchema.nullable()),
-  login: async (credentials: Credentials) => {
-    if (config.demo)
-      throw new ApiError(403, 'Selecciona un perfil de demostración para iniciar sesión.');
-    return request('/auth/login', userSchema, {
-      method: 'POST',
-      body: JSON.stringify(credentialsSchema.parse(credentials)),
-    });
+  me: async (): Promise<User | null> => {
+    if (config.demo) return currentDemoUser();
+    if (!(await accessToken())) return null;
+    const user = await request('/me', userSchema);
+    // UI capabilities are presentation-level and use different names than Identity's policy catalog.
+    return { ...user, capabilities: undefined };
   },
   demoLogin: async (profileId: Role | string): Promise<User> => {
     if (!config.demo) throw new Error('El modo de demostración está desactivado.');
@@ -60,10 +51,10 @@ export const authApi = {
       demoGeneration++;
       return;
     }
-    await request('/auth/logout', z.undefined(), { method: 'POST' });
+    await endSession();
   },
   users: async (): Promise<User[]> => {
-    if (!config.demo) return request('/users', z.array(userSchema));
+    if (!config.demo) return readAll('/users', userSchema);
     const user = currentDemoUser();
     if (!user || !can(user, 'user:read'))
       throw new ApiError(403, 'Solo administración puede consultar usuarios.');

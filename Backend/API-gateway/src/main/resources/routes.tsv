@@ -116,6 +116,17 @@ reporting	GET	/api/v1/report-jobs/{jobId}
 reporting	DELETE	/api/v1/report-jobs/{jobId}
 reporting	POST	/api/v1/report-jobs/{jobId}/download-authorization
 reporting	GET	/api/v1/report-jobs/{jobId}/content
+audit	GET	/api/v1/audit-events
+audit	GET	/api/v1/audit-events/{auditEventId}
+audit	POST	/api/v1/audit-export-jobs
+audit	GET	/api/v1/audit-export-jobs/{jobId}
+audit	POST	/api/v1/audit-export-jobs/{jobId}/download-authorization
+audit	GET	/api/v1/audit-export-jobs/{jobId}/content
+proposal	GET	/api/v1/reference/research-areas
+document	GET	/api/v1/reference/document-types
+project	GET	/api/v1/reference/publication-types
+reporting	GET	/api/v1/reference/statuses
+# Planned owners disabled by default with DISABLED_ROUTE_OWNERS
 ai	GET	/api/v1/ai/conversations
 ai	POST	/api/v1/ai/conversations
 ai	GET	/api/v1/ai/conversations/{conversationId}
@@ -127,12 +138,6 @@ ai	POST	/api/v1/ai/conversations/{conversationId}/questions:stream
 ai	GET	/api/v1/ai/conversations/{conversationId}/messages/{messageId}
 ai	POST	/api/v1/ai/messages/{messageId}/feedback
 ai	GET	/api/v1/ai/sources/{sourceReferenceId}
-audit	GET	/api/v1/audit-events
-audit	GET	/api/v1/audit-events/{auditEventId}
-audit	POST	/api/v1/audit-export-jobs
-audit	GET	/api/v1/audit-export-jobs/{jobId}
-audit	POST	/api/v1/audit-export-jobs/{jobId}/download-authorization
-audit	GET	/api/v1/audit-export-jobs/{jobId}/content
 notification	GET	/api/v1/notifications
 notification	GET	/api/v1/notifications/unread-count
 notification	GET	/api/v1/notifications/{notificationId}
@@ -141,7 +146,3 @@ notification	DELETE	/api/v1/notifications/{notificationId}/read
 notification	POST	/api/v1/notifications/read-all
 notification	GET	/api/v1/me/notification-preferences
 notification	PUT	/api/v1/me/notification-preferences
-proposal	GET	/api/v1/reference/research-areas
-document	GET	/api/v1/reference/document-types
-project	GET	/api/v1/reference/publication-types
-reporting	GET	/api/v1/reference/statuses

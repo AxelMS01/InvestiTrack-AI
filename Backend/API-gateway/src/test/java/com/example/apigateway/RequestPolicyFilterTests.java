@@ -27,7 +27,8 @@ class RequestPolicyFilterTests {
             @Override public Instant instant() { return Instant.ofEpochMilli(now.get()); }
         };
         var properties = new GatewayProperties("issuer", "jwks", "audience", List.of("http://localhost"), 100,
-                new GatewayProperties.RateLimit(2, 60, 2), Map.of("identity", URI.create("http://localhost")));
+                new GatewayProperties.RateLimit(2, 60, 2), java.util.Set.of(),
+                Map.of("identity", URI.create("http://localhost")));
         var policy = new RequestPolicyFilter(properties, new Problems(new ObjectMapper()), clock);
         assertThat(request(policy, "alice").getResponse().getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(request(policy, "alice").getResponse().getStatusCode()).isEqualTo(HttpStatus.OK);

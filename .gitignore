@@ -1,0 +1,39 @@
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+!.env.docker.example
+!.env.integration.example
+Backend/**/.env
+Backend/**/.env.*
+!Backend/**/.env.example
+!Backend/**/.env.docker.example
+!Backend/**/.env.integration.example
+
+# IDE metadata
+.idea/
+Backend/.idea/
+*.iml
+
+# Build output and local tooling
+target/
+build/
+Backend/InvestiTrackBack/bin/
+dist/
+node_modules/
+.gradle/
+.mvn-home/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Private HTTP client environments
+**/http/*private*.json
+Backend/API-gateway/http/http-client.env.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+__pycache__/

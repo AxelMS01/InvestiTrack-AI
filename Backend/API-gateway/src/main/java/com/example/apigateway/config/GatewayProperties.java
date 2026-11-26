@@ -8,6 +8,7 @@ import org.springframework.validation.annotation.Validated;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Validated
 @ConfigurationProperties("gateway")
@@ -16,6 +17,7 @@ public record GatewayProperties(
         @NotEmpty List<String> allowedOrigins,
         @Min(1) int maxRequestBytes,
         @Valid RateLimit rateLimit,
+        Set<String> disabledOwners,
         @NotEmpty Map<String, URI> services) {
     public record RateLimit(@Min(1) int requests, @Min(1) int windowSeconds, @Min(1) int maxSubjects) { }
 }

@@ -31,7 +31,9 @@ const userFields = z.object({
   academicUnitIds: z.array(z.string()).optional(),
   coordinationUnitIds: z.array(z.string()).optional(),
   assignedProjectIds: z.array(z.string()).optional(),
-  status: accountStatusSchema.optional(),
+  status: z
+    .union([accountStatusSchema, z.literal('DEACTIVATED').transform(() => 'INACTIVE' as const)])
+    .optional(),
   capabilities: z.array(z.string()).optional(),
 });
 const receivedRole = z
